@@ -51,13 +51,6 @@ export default function QuizPage() {
     loadQuestion();
   }, [childId, subject, chapterId]);
 
-  /* DEBUG: Log state changes */
-  useEffect(() => {
-    console.log("🔍 Quiz State - currentQ:", currentQ, "isQuizComplete:", isQuizComplete, "score:", score);
-    if (isQuizComplete && currentQ >= totalQuestions) {
-      console.log("✅ Quiz Complete! View Score button should appear");
-    }
-  }, [currentQ, isQuizComplete, score]);
 
   const loadQuestion = async () => {
     try {
@@ -65,17 +58,13 @@ export default function QuizPage() {
         params: { childId, subject, chapterId },
       });
 
-      // IGNORE backend's completed flag completely - we control the 8-question limit
-      // Only check if we've actually completed 8 questions on the frontend
       if (currentQ >= totalQuestions) {
         setIsQuizComplete(true);
         return;
       }
 
       if (!res.data.question) {
-        // If no question and we haven't reached 8, show error but don't redirect
         if (currentQ < totalQuestions) {
-          console.warn("No question returned but quiz not complete.");
           alert("No question available. Please try again.");
           return;
         } else {
@@ -86,8 +75,7 @@ export default function QuizPage() {
 
       setQuestion(res.data.question);
     } catch (error) {
-      console.error("Quiz.js - Error loading question:", error);
-      // Don't redirect on error - just show alert
+      console.error("Error loading question:", error);
       alert("Failed to load question. Please try again.");
     }
   };
@@ -109,36 +97,24 @@ export default function QuizPage() {
         isCorrect,
       });
 
-      // Calculate next question number
       const nextQ = currentQ + 1;
       
-      console.log("📊 Quiz - Current Q:", currentQ, "Next Q:", nextQ, "Total:", totalQuestions);
-      
-      // Check if we've completed all 8 questions FIRST (before checking backend response)
-      // After answering question 8, nextQ will be 9, so we mark as complete
       if (nextQ > totalQuestions) {
-        console.log("✅ Quiz - Completed all 8 questions! Setting isQuizComplete to true");
-        setCurrentQ(totalQuestions); // Keep at 8, don't go to 9
+        setCurrentQ(totalQuestions);
         setIsQuizComplete(true);
-        // Clear the question so View Score button shows immediately
         setQuestion(null);
-        return; // Don't load next question, quiz is complete
+        return;
       }
 
-      // Update current question number (we haven't reached 8 yet)
       setCurrentQ(nextQ);
 
-      // IGNORE backend's completed flag - we control the 8-question limit
-      // Always try to load the next question if available
       if (res.data.question) {
         setQuestion(res.data.question);
       } else {
-        // If no question returned, try to load a new one
-        // Don't mark as complete yet - we need 8 questions
         await loadQuestion();
       }
     } catch (error) {
-      console.error("Quiz.js - Error submitting answer:", error);
+      console.error("Error submitting answer:", error);
       alert("Failed to submit answer. Please try again.");
     }
   };
@@ -151,23 +127,13 @@ export default function QuizPage() {
   };
 
   const handleViewScore = () => {
-    // Save score to cookies for scoreboard page
-    console.log("💾 Saving score to cookies - score:", score, "total:", totalQuestions);
     cookies.set("quizScore", score.toString(), { path: "/", maxAge: 30 * 24 * 60 * 60 });
     cookies.set("quizTotalQuestions", totalQuestions.toString(), { path: "/", maxAge: 30 * 24 * 60 * 60 });
-    
-    // Verify cookies were set
-    const savedScore = cookies.get("quizScore");
-    const savedTotal = cookies.get("quizTotalQuestions");
-    console.log("✅ Cookies saved - quizScore:", savedScore, "quizTotalQuestions:", savedTotal);
-    
-    // Use setTimeout to ensure cookies are saved before navigation
     setTimeout(() => {
       router.push("/scoreboard");
     }, 100);
   };
 
-  // Show loading only if quiz is not complete and question is null
   if (!question && !isQuizComplete) {
     return (
       <Box
@@ -265,7 +231,6 @@ export default function QuizPage() {
           />
         </Box>
 
-        {/* Question Text - Hide when quiz is complete */}
         {!isQuizComplete && question && (
           <>
             <Typography
@@ -345,7 +310,6 @@ export default function QuizPage() {
           </>
         )}
 
-        {/* Completion Message - Show when quiz is complete */}
         {isQuizComplete && (
           <Box sx={{ textAlign: "center", mb: 4 }}>
             <Typography
@@ -371,7 +335,6 @@ export default function QuizPage() {
           </Box>
         )}
 
-        {/* View Score Button - Only appears after exactly 8 questions are answered */}
         {isQuizComplete && currentQ === totalQuestions && (
           <Box sx={{ display: "flex", justifyContent: "center" }}>
             <Button
@@ -396,7 +359,6 @@ export default function QuizPage() {
           </Box>
         )}
 
-        {/* Restart Button - Only show if quiz is not complete */}
         {!isQuizComplete && (
           <Box sx={{ display: "flex", justifyContent: "center" }}>
             <Button

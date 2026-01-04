@@ -47,7 +47,8 @@ export default function Chapters() {
         setSubscriptionStatus(response.data.status || "trial");
       }
     } catch (error) {
-      console.error("Error fetching subscription:", error);
+      // Default to trial if subscription check fails
+      setSubscriptionStatus("trial");
     }
   };
 
@@ -382,200 +383,104 @@ export default function Chapters() {
                     return;
                   }
 
-                  // Navigate to learn page with chapter from database
                   try {
-                    console.log("Chapter clicked:", chapter.name);
-                    console.log("Selected subject:", selectedSubjectName);
-                    console.log("Selected class:", selectedChildClass);
-                    console.log("Token exists:", !!token);
+                    let dbChapter = null;
 
-                    // First, try to get all chapters (public endpoint, no auth needed)
+                    // Try to get all chapters first
                     try {
-                      console.log("Fetching all chapters from public endpoint...");
                       const allChaptersResponse = await axios.get("/api/v1/chapters/all/get");
-                      console.log("Response status:", allChaptersResponse.status);
-                      console.log("Full response:", JSON.stringify(allChaptersResponse.data, null, 2));
-                      
                       if (allChaptersResponse.status === 200) {
-                        // Handle different response structures
                         const allChapters = allChaptersResponse.data.chapters || 
                                           allChaptersResponse.data || 
                                           [];
-                        console.log("Total chapters found:", allChapters.length);
-                        console.log("All chapters from DB:", allChapters.map(ch => ({ 
-                          _id: ch._id, 
-                          name: ch.name, 
-                          subjectId: ch.subjectId 
-                        })));
-                        
-                        if (allChapters.length === 0) {
-                          console.error("No chapters returned from API");
-                        }
-                        
-                        // Find chapter by name (exact match, case-insensitive)
                         const searchName = (chapter.name || "").toLowerCase().trim();
-                        console.log("Searching for chapter name:", searchName);
-                        
-                        const dbChapter = allChapters.find(
-                          ch => {
-                            if (!ch || !ch.name) return false;
-                            const dbName = String(ch.name).toLowerCase().trim();
-                            const matches = dbName === searchName;
-                            if (matches || dbName.includes(searchName) || searchName.includes(dbName)) {
-                              console.log("Name comparison:", {
-                                dbName,
-                                searchName,
-                                exactMatch: dbName === searchName,
-                                dbNameIncludes: dbName.includes(searchName),
-                                searchNameIncludes: searchName.includes(dbName)
-                              });
-                            }
-                            return dbName === searchName;
-                          }
+                        dbChapter = allChapters.find(
+                          ch => ch && ch.name && String(ch.name).toLowerCase().trim() === searchName
                         );
                         
-                        console.log("Matching result:", dbChapter ? {
-                          _id: dbChapter._id,
-                          name: dbChapter.name,
-                          subjectId: dbChapter.subjectId
-                        } : "NOT FOUND");
-                        
                         if (dbChapter && dbChapter._id) {
-                          const chapterId = String(dbChapter._id);
-                          console.log("✅ Found chapter via public endpoint!");
-                          console.log("Chapter ID:", chapterId);
-                          console.log("Chapter name:", dbChapter.name);
-                          console.log("Redirecting to /learn?chapter=" + chapterId);
-                          router.push(`/learn?chapter=${chapterId}&class=${selectedChildClass || 1}`);
+                          router.push(`/learn?chapter=${dbChapter._id}&class=${selectedChildClass || 1}`);
                           return;
-                        } else {
-                          console.error("❌ Chapter not found. Looking for:", chapter.name);
-                          console.error("Available chapter names:", allChapters.map(ch => ch?.name || "NO NAME"));
-                          console.error("Available chapter IDs:", allChapters.map(ch => ch?._id || "NO ID"));
                         }
-                      } else {
-                        console.error("Unexpected response status:", allChaptersResponse.status);
-                        console.error("Response:", allChaptersResponse.data);
                       }
                     } catch (publicError) {
-                      console.error("Error with public endpoint:", publicError);
-                      console.error("Error details:", publicError.response?.data || publicError.message);
+                      // Continue to fallback
                     }
 
-                    // Fallback: Try with subject-based lookup if we have the data
-                    if (selectedSubjectName && selectedChildClass && token) {
-                      // Get subject from database
+                    // Fallback: Try with subject-based lookup
+                    if (!dbChapter && selectedSubjectName && selectedChildClass && token) {
                       const subjectsResponse = await axios.get("/api/v1/subject/all/get");
-                      console.log("Subjects response:", subjectsResponse.status);
-                      
                       if (subjectsResponse.status === 200) {
                         const allSubjects = subjectsResponse.data.subjects || [];
-                        console.log("All subjects:", allSubjects.map(s => ({ name: s.name, class: s.classnumber })));
-                        
                         const subject = allSubjects.find(
                           s => s.name.toLowerCase().trim() === selectedSubjectName.toLowerCase().trim() && 
                                s.classnumber === parseInt(selectedChildClass)
                         );
 
-                        console.log("Found subject:", subject?._id);
-
                         if (subject) {
-                          // Get chapters for this subject
                           try {
                             const chaptersResponse = await axios.get(`/api/v1/chapters/by-subject/${subject._id}`, {
-                              params: {
-                                childId: selectedChildId
-                              },
-                              headers: {
-                                Authorization: `Bearer ${token}`,
-                              },
+                              params: { childId: selectedChildId },
+                              headers: { Authorization: `Bearer ${token}` },
                             });
 
-                            console.log("Chapters response:", chaptersResponse.status);
-                            
                             if (chaptersResponse.status === 200) {
                               const dbChapters = chaptersResponse.data.chapters || [];
-                              console.log("Database chapters:", dbChapters.map(ch => ch.name));
-                              
-                              // Find chapter by name (matching our hardcoded chapter name)
-                              const dbChapter = dbChapters.find(
+                              dbChapter = dbChapters.find(
                                 ch => ch.name.toLowerCase().trim() === chapter.name.toLowerCase().trim()
                               );
 
-                              console.log("Found chapter in DB:", dbChapter?._id);
-
                               if (dbChapter && dbChapter._id) {
-                                // Route to learn page with chapter ID
-                                console.log("Redirecting to learn page with chapter:", dbChapter._id);
                                 router.push(`/learn?chapter=${dbChapter._id}&class=${selectedChildClass}`);
                                 return;
-                              } else {
-                                console.error("Chapter not found in database. Looking for:", chapter.name);
-                                console.error("Available chapters:", dbChapters.map(ch => ch.name));
                               }
-                            } else {
-                              console.error("Failed to fetch chapters:", chaptersResponse.status);
                             }
                           } catch (chaptersError) {
-                            console.error("Error fetching chapters by subject:", chaptersError.response?.data || chaptersError.message);
-                            // Fallback: Try to get all chapters and find by name
+                            // Try fallback to all chapters
                             try {
                               const allChaptersResponse = await axios.get("/api/v1/chapters/all/get");
                               if (allChaptersResponse.status === 200) {
                                 const allChapters = allChaptersResponse.data.chapters || [];
-                                const dbChapter = allChapters.find(
+                                dbChapter = allChapters.find(
                                   ch => ch.name.toLowerCase().trim() === chapter.name.toLowerCase().trim() &&
-                                       ch.subjectId.toString() === subject._id.toString()
+                                       ch.subjectId && ch.subjectId.toString() === subject._id.toString()
                                 );
                                 if (dbChapter && dbChapter._id) {
-                                  console.log("Found chapter via fallback:", dbChapter._id);
                                   router.push(`/learn?chapter=${dbChapter._id}&class=${selectedChildClass}`);
                                   return;
                                 }
                               }
                             } catch (fallbackError) {
-                              console.error("Fallback also failed:", fallbackError);
+                              // Continue to error message
                             }
                           }
-                        } else {
-                          console.error("Subject not found:", selectedSubjectName, "Class:", selectedChildClass);
                         }
                       }
-                    } else {
-                      console.error("Missing required data:", {
-                        selectedSubjectName: !!selectedSubjectName,
-                        selectedChildClass: !!selectedChildClass,
-                        token: !!token
-                      });
-                      
-                      // Fallback: Try to find chapter using public endpoint
+                    }
+
+                    // Final fallback: Try public endpoint again
+                    if (!dbChapter) {
                       try {
-                        console.log("Trying fallback: Get all chapters");
                         const allChaptersResponse = await axios.get("/api/v1/chapters/all/get");
                         if (allChaptersResponse.status === 200) {
                           const allChapters = allChaptersResponse.data.chapters || [];
-                          console.log("All chapters from DB:", allChapters.map(ch => ({ name: ch.name, subjectId: ch.subjectId })));
-                          
-                          // Find chapter by name only (since we don't have subject info)
-                          const dbChapter = allChapters.find(
-                            ch => ch.name.toLowerCase().trim() === chapter.name.toLowerCase().trim()
+                          const searchName = (chapter.name || "").toLowerCase().trim();
+                          dbChapter = allChapters.find(
+                            ch => ch && ch.name && String(ch.name).toLowerCase().trim() === searchName
                           );
-                          
                           if (dbChapter && dbChapter._id) {
-                            console.log("Found chapter via public endpoint:", dbChapter._id);
                             router.push(`/learn?chapter=${dbChapter._id}&class=${selectedChildClass || 1}`);
                             return;
                           }
                         }
                       } catch (fallbackError) {
-                        console.error("Fallback also failed:", fallbackError);
+                        // Continue to error message
                       }
                     }
-                    
-                    // Final fallback: If no database chapter found, show error
-                    console.error("❌ All attempts failed. Chapter not found in database.");
-                    console.error("Chapter name we're looking for:", chapter.name);
-                    alert(`Chapter "${chapter.name}" not found in database. Please check:\n1. Chapter name matches exactly: "${chapter.name}"\n2. Chapter is added to the database\n3. Check browser console for details.`);
+
+                    if (!dbChapter) {
+                      alert(`Chapter "${chapter.name}" not found. Please try again.`);
+                    }
                   } catch (error) {
                     console.error("Error fetching chapter:", error);
                     alert("Error loading chapter. Please try again.");

@@ -22,16 +22,12 @@ export default function ScoreboardPage() {
   const [feedback, setFeedback] = useState({ message: "", color: "" });
 
   useEffect(() => {
-    // Wait a bit for cookies to be available (in case of navigation timing)
     const checkCookies = () => {
       const storedScore = cookies.get("quizScore");
       const storedTotalQuestions = cookies.get("quizTotalQuestions");
 
-      console.log("📊 Scoreboard - Checking cookies - score:", storedScore, "total:", storedTotalQuestions);
-
       if (storedScore === undefined || storedTotalQuestions === undefined) {
-        console.warn("⚠️ Scoreboard - No cookies found, redirecting to chapters");
-        router.replace("/chapters"); // Redirect if no score data
+        router.replace("/chapters");
         return;
       }
 
@@ -39,28 +35,24 @@ export default function ScoreboardPage() {
       const tQ = parseInt(storedTotalQuestions, 10);
       const p = tQ > 0 ? Math.round((s / tQ) * 100) : 0;
 
-      console.log("✅ Scoreboard - Score loaded - score:", s, "total:", tQ, "percentage:", p);
-
       setScore(s);
       setTotalQuestions(tQ);
       setPercentage(p);
 
       if (p >= 80) {
-        setFeedback({ message: "Outstanding! Keep up the great work!", color: "#4CAF50" }); // Green
+        setFeedback({ message: "Outstanding! Keep up the great work!", color: "#4CAF50" });
       } else if (p >= 60) {
-        setFeedback({ message: "Great job! You're doing well!", color: "#FF8C00" }); // Orange
+        setFeedback({ message: "Great job! You're doing well!", color: "#FF8C00" });
       } else {
-        setFeedback({ message: "Keep practicing! You'll get there!", color: "#F44336" }); // Red
+        setFeedback({ message: "Keep practicing! You'll get there!", color: "#F44336" });
       }
 
-      // Clean up cookies AFTER a delay to ensure they're read first
       setTimeout(() => {
         cookies.remove("quizScore", { path: "/" });
         cookies.remove("quizTotalQuestions", { path: "/" });
       }, 1000);
     };
 
-    // Check immediately and also after a short delay (in case cookies need time to be set)
     checkCookies();
     const timeout = setTimeout(checkCookies, 200);
     
@@ -116,10 +108,8 @@ export default function ScoreboardPage() {
             padding: "40px 20px",
           }}
         >
-          {/* Trophy Icon */}
           <EmojiEventsIcon sx={{ fontSize: 80, color: "#FFD700", mb: 2 }} />
           
-          {/* Score Display */}
           <Typography
             className={poppins.className}
             sx={{
@@ -145,7 +135,6 @@ export default function ScoreboardPage() {
             Your Score: {score} / {totalQuestions}
           </Typography>
 
-          {/* Progress Bar */}
           <Box sx={{ width: "100%", maxWidth: 400, mb: 3 }}>
             <LinearProgress
               variant="determinate"
@@ -174,7 +163,6 @@ export default function ScoreboardPage() {
             </Typography>
           </Box>
 
-          {/* Back to Chapters Button */}
           <Button
             variant="contained"
             onClick={handleBackToChapters}
