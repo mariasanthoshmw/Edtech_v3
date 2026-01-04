@@ -1,0 +1,203 @@
+import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
+import { Cookies } from "react-cookie";
+import Head from "next/head";
+import { Box, Typography, LinearProgress, Button } from "@mui/material";
+import { Poppins } from "next/font/google";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import AuthFrame from "../components/common/AuthFrame";
+
+const poppins = Poppins({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+});
+
+const cookies = new Cookies();
+
+export default function ScoreboardPage() {
+  const router = useRouter();
+  const [score, setScore] = useState(0);
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  const [percentage, setPercentage] = useState(0);
+  const [feedback, setFeedback] = useState({ message: "", color: "" });
+
+  useEffect(() => {
+    // Wait a bit for cookies to be available (in case of navigation timing)
+    const checkCookies = () => {
+      const storedScore = cookies.get("quizScore");
+      const storedTotalQuestions = cookies.get("quizTotalQuestions");
+
+      console.log("📊 Scoreboard - Checking cookies - score:", storedScore, "total:", storedTotalQuestions);
+
+      if (storedScore === undefined || storedTotalQuestions === undefined) {
+        console.warn("⚠️ Scoreboard - No cookies found, redirecting to chapters");
+        router.replace("/chapters"); // Redirect if no score data
+        return;
+      }
+
+      const s = parseInt(storedScore, 10);
+      const tQ = parseInt(storedTotalQuestions, 10);
+      const p = tQ > 0 ? Math.round((s / tQ) * 100) : 0;
+
+      console.log("✅ Scoreboard - Score loaded - score:", s, "total:", tQ, "percentage:", p);
+
+      setScore(s);
+      setTotalQuestions(tQ);
+      setPercentage(p);
+
+      if (p >= 80) {
+        setFeedback({ message: "Outstanding! Keep up the great work!", color: "#4CAF50" }); // Green
+      } else if (p >= 60) {
+        setFeedback({ message: "Great job! You're doing well!", color: "#FF8C00" }); // Orange
+      } else {
+        setFeedback({ message: "Keep practicing! You'll get there!", color: "#F44336" }); // Red
+      }
+
+      // Clean up cookies AFTER a delay to ensure they're read first
+      setTimeout(() => {
+        cookies.remove("quizScore", { path: "/" });
+        cookies.remove("quizTotalQuestions", { path: "/" });
+      }, 1000);
+    };
+
+    // Check immediately and also after a short delay (in case cookies need time to be set)
+    checkCookies();
+    const timeout = setTimeout(checkCookies, 200);
+    
+    return () => clearTimeout(timeout);
+  }, [router]);
+
+  const handleBackToChapters = () => {
+    router.push("/chapters");
+  };
+
+  if (totalQuestions === 0) {
+    return (
+      <>
+        <Head>
+          <title>Quiz Score - Study.Pilot</title>
+        </Head>
+        <AuthFrame showBack={true}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: "60vh",
+            }}
+          >
+            <Typography variant="h6" sx={{ color: "#666666" }}>
+              Loading score…
+            </Typography>
+          </Box>
+        </AuthFrame>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Head>
+        <title>Quiz Score - Study.Pilot</title>
+        <meta name="description" content="Quiz Results" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <AuthFrame showBack={true}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "60vh",
+            width: "100%",
+            padding: "40px 20px",
+          }}
+        >
+          {/* Trophy Icon */}
+          <EmojiEventsIcon sx={{ fontSize: 80, color: "#FFD700", mb: 2 }} />
+          
+          {/* Score Display */}
+          <Typography
+            className={poppins.className}
+            sx={{
+              fontSize: "36px",
+              fontWeight: 700,
+              color: "#1EA0FF",
+              mb: 1,
+              textAlign: "center",
+            }}
+          >
+            Quiz Completed!
+          </Typography>
+          <Typography
+            className={poppins.className}
+            sx={{
+              fontSize: "28px",
+              fontWeight: 600,
+              color: "#000000",
+              mb: 3,
+              textAlign: "center",
+            }}
+          >
+            Your Score: {score} / {totalQuestions}
+          </Typography>
+
+          {/* Progress Bar */}
+          <Box sx={{ width: "100%", maxWidth: 400, mb: 3 }}>
+            <LinearProgress
+              variant="determinate"
+              value={percentage}
+              sx={{
+                height: 15,
+                borderRadius: 5,
+                bgcolor: "#E0E0E0",
+                "& .MuiLinearProgress-bar": {
+                  bgcolor: feedback.color,
+                  borderRadius: 5,
+                },
+              }}
+            />
+            <Typography
+              className={poppins.className}
+              sx={{
+                mt: 1,
+                color: feedback.color,
+                fontWeight: 600,
+                fontSize: "16px",
+                textAlign: "center",
+              }}
+            >
+              {percentage}% - {feedback.message}
+            </Typography>
+          </Box>
+
+          {/* Back to Chapters Button */}
+          <Button
+            variant="contained"
+            onClick={handleBackToChapters}
+            sx={{
+              bgcolor: "#FF8C00",
+              color: "#FFFFFF",
+              borderRadius: 3,
+              px: 4,
+              py: 1.5,
+              fontSize: "16px",
+              fontWeight: 600,
+              textTransform: "none",
+              "&:hover": {
+                bgcolor: "#FF7A00",
+              },
+              mt: 2,
+            }}
+          >
+            Back to Chapters
+          </Button>
+        </Box>
+      </AuthFrame>
+    </>
+  );
+}
+

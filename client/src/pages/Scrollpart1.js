@@ -46,8 +46,8 @@ export default function Home() {
       // Check if user exists
       const response = await axios.post("/api/v1/user/check", { email });
       
-      if (response.status === 200) {
-        // User exists - save email and redirect directly to profiles
+      if (response.status === 200 && response.data.exists) {
+        // User exists - save email and redirect directly to profiles page
         cookies.set("parentEmail", email, { path: "/", maxAge: 30 * 24 * 60 * 60 });
         router.push("/profiles");
       }

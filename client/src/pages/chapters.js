@@ -22,6 +22,7 @@ const cookies = new Cookies();
 export default function Chapters() {
   const router = useRouter();
   const [subscriptionStatus, setSubscriptionStatus] = useState("trial");
+  const [chaptersProgress, setChaptersProgress] = useState({});
   const token = cookies.get("token");
   const parentEmail = cookies.get("parentEmail");
   const selectedChildId = cookies.get("selectedChildId");
@@ -31,8 +32,9 @@ export default function Chapters() {
   useEffect(() => {
     if (token && parentEmail) {
       fetchSubscriptionStatus();
+      fetchChaptersProgress();
     }
-  }, [token, parentEmail]);
+  }, [token, parentEmail, selectedChildId]);
 
   const fetchSubscriptionStatus = async () => {
     try {
@@ -46,6 +48,52 @@ export default function Chapters() {
       }
     } catch (error) {
       console.error("Error fetching subscription:", error);
+    }
+  };
+
+  const fetchChaptersProgress = async () => {
+    try {
+      if (!selectedSubjectName || !selectedChildClass) return;
+
+      // Get subject by name and class
+      const subjectsResponse = await axios.get("/api/v1/subject/all/get");
+      
+      if (subjectsResponse.status === 200) {
+        const allSubjects = subjectsResponse.data.subjects || [];
+        const subject = allSubjects.find(
+          (s) => s.name.toLowerCase().trim() === selectedSubjectName.toLowerCase().trim() && 
+               s.classnumber === parseInt(selectedChildClass)
+        );
+
+        if (subject && subject._id) {
+          // Fetch chapters with progress for this subject
+          const chaptersResponse = await axios.get(
+            `/api/v1/chapters/by-subject/${subject._id}`,
+            {
+              params: {
+                childId: selectedChildId,
+              },
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (chaptersResponse.status === 200) {
+            const dbChapters = chaptersResponse.data.chapters || [];
+            
+            // Create a map of chapter name to status
+            const progressMap = {};
+            dbChapters.forEach((ch) => {
+              progressMap[ch.name.toLowerCase().trim()] = ch.status;
+            });
+            
+            setChaptersProgress(progressMap);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching chapters progress:", error);
     }
   };
 
@@ -138,7 +186,7 @@ export default function Chapters() {
           }}
         >
           <CheckCircleIcon sx={{ fontSize: "16px" }} />
-          <span>Completed</span>
+          Completed
         </Box>
       );
     } else if (status === "in-progress") {
@@ -547,20 +595,49 @@ export default function Chapters() {
                   {getStatusBadge(chapter.status, chapter.id)}
                 </Box>
 
-                {/* Title */}
-                <h3
-                  className={poppins.className}
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: "600",
-                    margin: 0,
-                    marginBottom: "8px",
-                    color: "#000000",
-                    lineHeight: "1.3",
-                  }}
-                >
-                  {chapter.name}
-                </h3>
+                {/* Title with Status */}
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <h3
+                    className={poppins.className}
+                    style={{
+                      fontSize: "18px",
+                      fontWeight: "600",
+                      margin: 0,
+                      color: "#000000",
+                      lineHeight: "1.3",
+                      flex: 1,
+                    }}
+                  >
+                    {chapter.name}
+                  </h3>
+                  {chaptersProgress[chapter.name.toLowerCase().trim()] && (
+                    <Box
+                      sx={{
+                        marginLeft: "8px",
+                        padding: "2px 8px",
+                        borderRadius: "8px",
+                        fontSize: "11px",
+                        fontWeight: "600",
+                        backgroundColor: chaptersProgress[chapter.name.toLowerCase().trim()] === "completed" 
+                          ? "#E8F5E9" 
+                          : chaptersProgress[chapter.name.toLowerCase().trim()] === "in-progress"
+                          ? "#FFF3E0"
+                          : "transparent",
+                        color: chaptersProgress[chapter.name.toLowerCase().trim()] === "completed"
+                          ? "#27AE60"
+                          : chaptersProgress[chapter.name.toLowerCase().trim()] === "in-progress"
+                          ? "#F39C12"
+                          : "#999",
+                      }}
+                    >
+                      {chaptersProgress[chapter.name.toLowerCase().trim()] === "completed" 
+                        ? "Completed" 
+                        : chaptersProgress[chapter.name.toLowerCase().trim()] === "in-progress"
+                        ? "In Progress"
+                        : ""}
+                    </Box>
+                  )}
+                </Box>
 
                 {/* Description */}
                 <p

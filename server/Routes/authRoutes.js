@@ -113,7 +113,7 @@ module.exports = (app) => {
     }
   });
   // PARENT LOGIN - Generate & Send OTP
-  app.post("/api/v1/parent/login", async (req, res) => {
+    app.post("/api/v1/parent/login", async (req, res) => {
     try {
       const { email } = req.body;
 
@@ -132,9 +132,9 @@ module.exports = (app) => {
       if (user) {
         await User.updateOne({ email }, {$set:{ otp: newOTP }});
         await sendEmail({
-        to: email,
-        subject: "Parent Login OTP",
-        text: `Your OTP to login as a parent is ${newOTP}.`,
+          to: email,
+          subject: "Parent Login OTP",
+          text: `Your OTP to login as a parent is ${newOTP}.`,
         });
         res.status(200).json({ message: "OTP Sent Successfully" });
       } 
@@ -175,9 +175,9 @@ module.exports = (app) => {
           isParent: false // Will be updated after OTP verification
         });
       }
-
-      await sendEmail({
-        to: email,
+        
+        await sendEmail({
+          to: email,
         subject: "Parent Registration OTP",
         text: `Your OTP to create your parent account is ${newOTP}.`,
       });

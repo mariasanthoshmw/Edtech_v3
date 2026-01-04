@@ -63,6 +63,7 @@ require("./Routes/authRoutes")(app);
 require("./Routes/chaptersRoutes")(app);
 require("./Routes/SubjectRoutes")(app);
 require("./Routes/paymentRoutes")(app);
+require("./Routes/quizQuestionRoutes")(app);
 
 // Router-based quiz routes (IMPORTANT)
 const quizRoutes = require("./Routes/quizRoutes");

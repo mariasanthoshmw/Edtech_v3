@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const AttemptSchema = new mongoose.Schema({
   childId: String,
@@ -10,4 +10,7 @@ const AttemptSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.model("Attempt", AttemptSchema);
+if (!mongoose.models.attempts) {
+  mongoose.model("attempts", AttemptSchema);
+}
+module.exports = mongoose.model("attempts");

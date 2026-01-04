@@ -200,6 +200,53 @@ module.exports = (app) => {
     }
   });
 
+  // Mark video progress (in-progress or completed)
+  app.post("/api/v1/chapters/:chapterId/progress", requireLogin, async (req, res) => {
+    const { chapterId } = req.params;
+    const { childId, completed } = req.body;
+    const parentId = req.user._id;
+    const User = mongoose.model("edtechusers");
+
+    try {
+      const Progress = mongoose.model("progress");
+      const chapter = await Chapters.findById(chapterId);
+      
+      if (!chapter) {
+        return res.status(404).json({ message: "Chapter not found" });
+      }
+
+      let actualUserId = parentId;
+      if (childId) {
+        const child = await User.findOne({ _id: childId, parentId });
+        if (!child) {
+          return res.status(403).json({ message: "Child not found or access denied" });
+        }
+        actualUserId = childId;
+      }
+
+      let progress = await Progress.findOne({ userId: actualUserId, chapterId });
+      if (!progress) {
+        progress = await Progress.create({
+          userId: actualUserId,
+          subjectId: chapter.subjectId,
+          chapterId,
+          completed: completed === true || completed === "true"
+        });
+      } else {
+        progress.completed = completed === true || completed === "true";
+        await progress.save();
+      }
+
+      res.status(200).json({ 
+        message: `Chapter marked as ${progress.completed ? "completed" : "in-progress"}`,
+        progress
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Mark video as completed
   app.post("/api/v1/chapters/:chapterId/complete", requireLogin, async (req, res) => {
     const { chapterId } = req.params;

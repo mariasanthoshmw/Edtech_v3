@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const LeaderboardSchema = new mongoose.Schema({
   childId: { type: String, unique: true },
@@ -12,4 +12,7 @@ const LeaderboardSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.model("Leaderboard", LeaderboardSchema);
+if (!mongoose.models.leaderboards) {
+  mongoose.model("leaderboards", LeaderboardSchema);
+}
+module.exports = mongoose.model("leaderboards");

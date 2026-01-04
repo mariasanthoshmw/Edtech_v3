@@ -1,6 +1,6 @@
 // server/utils/points.js
 
-export function calculatePoints(difficulty, isCorrect) {
+function calculatePoints(difficulty, isCorrect) {
   if (!isCorrect) return 0;
 
   switch (difficulty) {
@@ -14,3 +14,5 @@ export function calculatePoints(difficulty, isCorrect) {
       return 10;
   }
 }
+
+module.exports = { calculatePoints };

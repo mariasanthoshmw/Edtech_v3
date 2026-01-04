@@ -2,6 +2,10 @@ const mongoose = require("mongoose");
 
 const QuizQuestionSchema = new mongoose.Schema(
   {
+    chapterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "chapters",
+    },
     subject: {
       type: String,
       required: true,
@@ -38,5 +42,10 @@ const QuizQuestionSchema = new mongoose.Schema(
 /**
  * 🔑 THIS LINE IS THE MOST IMPORTANT
  * Without this → findOne WILL NOT WORK
+ * Register with lowercase plural name to match other routes
  */
-module.exports = mongoose.model("QuizQuestion", QuizQuestionSchema);
+// Only register if not already registered (prevents "Cannot overwrite model" error)
+if (!mongoose.models.quizquestions) {
+  mongoose.model("quizquestions", QuizQuestionSchema);
+}
+module.exports = mongoose.model("quizquestions");

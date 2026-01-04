@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import axios from "axios";
@@ -23,6 +23,10 @@ export default function Learn() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [videoUrl, setVideoUrl] = useState(null);
+  const [isVideoCompleted, setIsVideoCompleted] = useState(false);
+  const [isVideoStarted, setIsVideoStarted] = useState(false);
+  const [showNextButton, setShowNextButton] = useState(false);
+  const videoRef = useRef(null);
  
   useEffect(() => {
     const fetchChapter = async () => {
@@ -102,6 +106,8 @@ export default function Learn() {
      
         if (response.data && response.data.chapter) {
           setChapterData(response.data.chapter);
+          // Check if chapter is already completed
+          setIsVideoCompleted(response.data.chapter.status === "completed");
           // Construct video URL from backend
           if (response.data.chapter.videourl) {
             const baseUrl = "http://localhost:5001";
@@ -147,6 +153,52 @@ export default function Learn() {
  
     fetchChapter();
   }, [chapter, router.isReady]);
+
+  // Function to mark video progress
+  const markVideoProgress = async (status) => {
+    try {
+      const token = cookies.get("token");
+      const selectedChildId = cookies.get("selectedChildId");
+      
+      if (!chapter) return;
+      
+      let chapterId = chapter;
+      if (Array.isArray(chapter)) {
+        chapterId = chapter[0];
+      }
+      chapterId = String(chapterId).trim();
+      
+      if (status === "completed") {
+        // Mark as completed
+        await axios.post(
+          `/api/v1/chapters/${chapterId}/complete`,
+          { childId: selectedChildId },
+          {
+            headers: token ? {
+              Authorization: `Bearer ${token}`,
+            } : {},
+          }
+        );
+      } else if (status === "in-progress") {
+        // Mark as in-progress - create progress entry with completed: false
+        try {
+          await axios.post(
+            `/api/v1/chapters/${chapterId}/progress`,
+            { childId: selectedChildId, completed: false },
+            {
+              headers: token ? {
+                Authorization: `Bearer ${token}`,
+              } : {},
+            }
+          );
+        } catch (err) {
+          console.log("Error marking in-progress:", err.message);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating video progress:", error);
+    }
+  };
  
   if (!cls || !chapter) {
     return (
@@ -155,7 +207,7 @@ export default function Learn() {
       </p>
     );
   }
- 
+
   return (
     <div className={styles.learnPage}>
       {/* Logo and Back Button - Top Left */}
@@ -194,7 +246,7 @@ export default function Learn() {
           ←
         </button>
       </div>
- 
+
       {loading && (
         <div
           style={{
@@ -209,7 +261,7 @@ export default function Learn() {
           Loading chapter...
         </div>
       )}
- 
+
       {error && (
         <div
           style={{
@@ -233,10 +285,11 @@ export default function Learn() {
           </div>
         </div>
       )}
- 
+
       {!loading && !error && videoUrl && (
         <div className={styles.videoContainer}>
           <video
+            ref={videoRef}
             key={videoUrl}
             controls
             autoPlay
@@ -259,6 +312,39 @@ export default function Learn() {
             onCanPlay={() => {
               console.log("Video can play");
             }}
+            onTimeUpdate={(e) => {
+              // Check if we're in the last 15 seconds of the video
+              const video = e.target;
+              const currentTime = video.currentTime;
+              const duration = video.duration;
+              
+              if (duration && currentTime) {
+                const remainingTime = duration - currentTime;
+                // Show Next button in last 15 seconds
+                if (remainingTime <= 10 && remainingTime > 0) {
+                  setShowNextButton(true);
+                } else if (remainingTime <= 0) {
+                  // Video ended
+                  setShowNextButton(true);
+                  setIsVideoCompleted(true);
+                }
+              }
+            }}
+            onPlay={async () => {
+              // Mark as in-progress when video starts playing
+              if (!isVideoStarted && !isVideoCompleted) {
+                setIsVideoStarted(true);
+                await markVideoProgress("in-progress");
+              }
+            }}
+            onEnded={async () => {
+              // Mark as completed when video ends
+              if (!isVideoCompleted) {
+                setIsVideoCompleted(true);
+                setShowNextButton(true);
+                await markVideoProgress("completed");
+              }
+            }}
           >
             <source src={videoUrl} type="video/mp4" />
             <source src={videoUrl} type="video/webm" />
@@ -267,7 +353,7 @@ export default function Learn() {
           </video>
         </div>
       )}
- 
+
       {!loading && !error && !videoUrl && chapterData && (
         <div
           style={{
@@ -282,13 +368,15 @@ export default function Learn() {
           No video available for this chapter
         </div>
       )}
-      <button 
-        className={`${styles.nextBtn} ${irishGrover.className}`}
-        onClick={() => router.push('/dinoquiz')}
-      >
-        Next
-      </button>
- 
+      {showNextButton && (
+        <button 
+          className={`${styles.nextBtn} ${irishGrover.className}`}
+          onClick={() => router.push('/dinoquiz')}
+        >
+          Next
+        </button>
+      )}
+
     </div>
   );
 }

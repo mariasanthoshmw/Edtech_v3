@@ -52,7 +52,26 @@ export default function CreateAccount() {
     }
 
     try {
-      // Use register-otp route for new account creation
+      // First check if account already exists
+      const checkResponse = await axios.post("/api/v1/user/check", { email });
+      
+      if (checkResponse.status === 200 && checkResponse.data.exists) {
+        // Account already exists
+        setMessage("Account already exists. Please login instead.");
+        setMessageType("error");
+        return;
+      }
+    } catch (error) {
+      // If check fails with 404, account doesn't exist - proceed
+      if (error.response && error.response.status !== 404) {
+        setMessage("An error occurred. Please try again.");
+        setMessageType("error");
+        return;
+      }
+    }
+
+    // Account doesn't exist, proceed with OTP for new account creation
+    try {
       const response = await axios.post("/api/v1/parent/register-otp", { email });
       
       if (response.status === 200) {
@@ -195,7 +214,7 @@ export default function CreateAccount() {
 
         <p className="signin-text" style={{ marginTop: "24px" }}>
           Already have an account?{" "}
-          <Link href="/parentlogin" passHref>
+          <Link href="/" passHref>
             <span
               style={{
                 color: "#1E88E5",
