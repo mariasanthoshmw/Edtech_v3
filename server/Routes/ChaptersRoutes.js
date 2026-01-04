@@ -19,7 +19,7 @@ module.exports = (app) => {
 
       res.status(201).json({ message: "Chapter added successfully", response });
     } catch (error) {
-      console.log(error);
+      console.error("Error adding chapter:", error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -35,7 +35,7 @@ module.exports = (app) => {
 
       res.status(200).json({ message: "Chapters: ", chapters });
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching chapters:", error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -124,7 +124,7 @@ module.exports = (app) => {
         isSubscribed
       });
     } catch (error) {
-      console.log(error);
+      console.error("Error in chapters route:", error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -195,7 +195,7 @@ module.exports = (app) => {
         locked: false
       });
     } catch (error) {
-      console.log(error);
+      console.error("Error in chapters route:", error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -242,7 +242,7 @@ module.exports = (app) => {
         progress
       });
     } catch (error) {
-      console.log(error);
+      console.error("Error in chapters route:", error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -292,7 +292,7 @@ module.exports = (app) => {
         progress
       });
     } catch (error) {
-      console.log(error);
+      console.error("Error in chapters route:", error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -320,7 +320,7 @@ module.exports = (app) => {
         chapter 
       });
     } catch (error) {
-      console.log(error);
+      console.error("Error in chapters route:", error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -341,7 +341,7 @@ module.exports = (app) => {
         chapter 
       });
     } catch (error) {
-      console.log(error);
+      console.error("Error in chapters route:", error);
       res.status(500).json({ message: error.message });
     }
   });
