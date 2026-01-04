@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const requireLogin = require("../middleware/requireLogin");
 
 module.exports = (app) => {
   // Ensure models are loaded
@@ -8,11 +7,7 @@ module.exports = (app) => {
   const QuizQuestion = mongoose.model("quizquestions");
   const Chapter = mongoose.model("chapters");
 
-  console.log("✅ QuizQuestionRoutes loaded - /api/v1/quiz/question/add endpoint registered");
-
-  // Add Quiz Question to Chapter
   app.post("/api/v1/quiz/question/add", async (req, res) => {
-    console.log("📥 POST /api/v1/quiz/question/add - Request received");
     const { chapterId, question, options, correctAnswer, marks, subject, topic, difficulty } = req.body;
 
     try {
@@ -54,12 +49,10 @@ module.exports = (app) => {
         question: quizQuestion
       });
     } catch (error) {
-      console.log(error);
       res.status(500).json({ message: error.message });
     }
   });
 
-  // Get All Questions for a Chapter
   app.get("/api/v1/quiz/questions/chapter/:chapterId", async (req, res) => {
     const { chapterId } = req.params;
 
@@ -76,12 +69,10 @@ module.exports = (app) => {
         totalMarks
       });
     } catch (error) {
-      console.log(error);
       res.status(500).json({ message: error.message });
     }
   });
 
-  // Get All Questions for a Chapter (Admin view with answers)
   app.get("/api/v1/quiz/questions/chapter/:chapterId/admin", async (req, res) => {
     const { chapterId } = req.params;
 
@@ -97,12 +88,10 @@ module.exports = (app) => {
         totalMarks
       });
     } catch (error) {
-      console.log(error);
       res.status(500).json({ message: error.message });
     }
   });
 
-  // Get Single Question by ID (Admin)
   app.get("/api/v1/quiz/question/:questionId", async (req, res) => {
     const { questionId } = req.params;
 
@@ -118,12 +107,10 @@ module.exports = (app) => {
         question
       });
     } catch (error) {
-      console.log(error);
       res.status(500).json({ message: error.message });
     }
   });
 
-  // Update Quiz Question
   app.put("/api/v1/quiz/question/:questionId", async (req, res) => {
     const { questionId } = req.params;
     const { question, options, correctAnswer, marks } = req.body;
@@ -150,12 +137,10 @@ module.exports = (app) => {
         question: quizQuestion
       });
     } catch (error) {
-      console.log(error);
       res.status(500).json({ message: error.message });
     }
   });
 
-  // Delete Quiz Question
   app.delete("/api/v1/quiz/question/:questionId", async (req, res) => {
     const { questionId } = req.params;
 
@@ -170,7 +155,6 @@ module.exports = (app) => {
         message: "Question deleted successfully"
       });
     } catch (error) {
-      console.log(error);
       res.status(500).json({ message: error.message });
     }
   });

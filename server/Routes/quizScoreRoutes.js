@@ -4,7 +4,6 @@ const QuizScore = mongoose.model("quizscores");
 const QuizQuestion = mongoose.model("quizquestions");
 const Child = mongoose.model("children");
 const Chapter = mongoose.model("chapters");
-const Subject = mongoose.model("subjects");
 
 module.exports = (app) => {
   // Submit Quiz (Child completes quiz)
@@ -66,8 +65,6 @@ module.exports = (app) => {
 
       const percentage = Math.round((score / totalMarks) * 100);
 
-      console.log(`✅ Quiz completed: ${child.name} scored ${score}/${totalMarks}`);
-
       res.status(201).json({ 
         message: "Quiz submitted successfully!",
         result: {
@@ -113,7 +110,6 @@ module.exports = (app) => {
         totalQuizzes: scores.length
       });
     } catch (error) {
-      console.log(error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -152,7 +148,6 @@ module.exports = (app) => {
         totalAttempts: scores.length
       });
     } catch (error) {
-      console.log(error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -188,7 +183,6 @@ module.exports = (app) => {
         quizScore
       });
     } catch (error) {
-      console.log(error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -223,7 +217,6 @@ module.exports = (app) => {
         message: "Quiz score deleted successfully"
       });
     } catch (error) {
-      console.log(error);
       res.status(500).json({ message: error.message });
     }
   });

@@ -39,12 +39,6 @@ const QuizQuestionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-/**
- * 🔑 THIS LINE IS THE MOST IMPORTANT
- * Without this → findOne WILL NOT WORK
- * Register with lowercase plural name to match other routes
- */
-// Only register if not already registered (prevents "Cannot overwrite model" error)
 if (!mongoose.models.quizquestions) {
   mongoose.model("quizquestions", QuizQuestionSchema);
 }
