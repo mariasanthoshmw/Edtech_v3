@@ -5,6 +5,12 @@ const UserSubject = mongoose.model("usersubjects");
 const User = mongoose.model("edtechusers");
 
 module.exports = (app) => {
+  // Test endpoint to verify route registration
+  app.get("/api/v1/subject/test", (req, res) => {
+    console.log("✅ SubjectRoutes test endpoint hit");
+    res.json({ message: "SubjectRoutes is registered and working" });
+  });
+
   // Add New Subject (Public - No login required for setup)
   app.post("/api/v1/subject/add", async (req, res) => {
     const { classnumber, name, price } = req.body;
@@ -133,9 +139,15 @@ module.exports = (app) => {
 
   // Get Subjects by Class with User's Lock Status
   app.get("/api/v1/subject/by-class/:classno", requireLogin, async (req, res) => {
+    console.log("✅ Route hit: /api/v1/subject/by-class/:classno");
+    console.log("Request params:", req.params);
+    console.log("Request query:", req.query);
+    
     const { classno } = req.params;
     const { childId } = req.query;
     const parentId = req.user._id;
+
+    console.log("Class number:", classno, "Child ID:", childId, "Parent ID:", parentId);
 
     try {
       // Use childId if provided, otherwise use parent's ID
@@ -162,11 +174,9 @@ module.exports = (app) => {
         userSubjectMap[us.subjectId.toString()] = us;
       });
 
-      // Check parent subscription status (first chapter is always free)
-      const parent = await User.findById(parentId);
-      const isSubscribed = parent?.subscriptionStatus === 'active';
-
       // Map subjects with lock status
+      // Subjects appear unlocked (clickable) but only first chapter is accessible
+      // Subject is fully unlocked only if purchased
       const subjectsWithStatus = subjects.map(subject => {
         const userSubject = userSubjectMap[subject._id.toString()];
 
@@ -180,17 +190,22 @@ module.exports = (app) => {
           }).catch(err => console.log("Error creating UserSubject:", err));
         }
 
-        // First chapter is always free, so subject is accessible if subscribed or first chapter exists
-        // For now, we'll show it as unlocked if subscribed, otherwise check UserSubject
-        const isLocked = !isSubscribed && (userSubject ? userSubject.locked : true);
+        // Subjects appear unlocked (so users can click and see chapters)
+        // But only first chapter is accessible unless subject is purchased
+        // locked: false means subject is purchased and all chapters accessible
+        // locked: true means subject not purchased, but first chapter still accessible
+        const isLocked = userSubject ? userSubject.locked : true;
 
         return {
           ...subject.toObject(),
-          locked: isLocked,
-          purchaseDate: userSubject && !userSubject.locked ? userSubject.purchaseDate : null
+          locked: false, // Always show as unlocked so users can click and see chapters
+          purchaseDate: userSubject && !userSubject.locked ? userSubject.purchaseDate : null,
+          isPurchased: !isLocked // Track if actually purchased for chapter access control
         };
       });
 
+      console.log("✅ Returning subjects with status:", subjectsWithStatus.map(s => ({ name: s.name, locked: s.locked })));
+      
       res.status(200).json({ 
         message: "Subjects retrieved successfully", 
         subjects: subjectsWithStatus 

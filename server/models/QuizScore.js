@@ -3,11 +3,15 @@ const { Schema } = mongoose;
 
 
 const quizScoreSchema = new mongoose.Schema({
-  userId: mongoose.Schema.Types.ObjectId,
-  subjectId: mongoose.Schema.Types.ObjectId,
+  childId: mongoose.Schema.Types.ObjectId,
   chapterId: mongoose.Schema.Types.ObjectId,
   score: Number,
-  totalMarks: Number
+  totalMarks: Number,
+  percentage: Number
+}, {
+  timestamps: true
 });
 
-mongoose.model("quizScores", quizScoreSchema);
+if (!mongoose.models.quizscores) {
+  mongoose.model("quizscores", quizScoreSchema);
+}

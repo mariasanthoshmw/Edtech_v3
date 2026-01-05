@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { Cookies } from 'react-cookie';
+import axios from 'axios';
 
 import AuthFrame from "../components/common/AuthFrame";
 import Box from '@mui/material/Box';
@@ -27,6 +28,7 @@ import CalculateIcon from '@mui/icons-material/Calculate';
 import ScienceIcon from '@mui/icons-material/Science';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import BrushIcon from '@mui/icons-material/Brush';
+import UserProfileMenu from '../components/common/UserProfileMenu';
 
 /* ---------- Images (public) ---------- */
 const DEFAULT_IMG = '/Confused_Cute_Dog.gif';
@@ -49,6 +51,7 @@ function SubjectCard({
   onClick,
   onHover,
   onLeave,
+  locked = false,
 }) {
   return (
     <Card
@@ -62,8 +65,9 @@ function SubjectCard({
         border: '1px solid rgba(0,0,0,0.06)',
         height: 140,
         p: 1.25,
-        cursor: 'pointer',
+        cursor: 'pointer', // Always clickable
         position: 'relative',
+        opacity: 1, // Always fully visible
         '&:hover': { boxShadow: 4 },
       }}
     >
@@ -80,6 +84,7 @@ function SubjectCard({
         <ChevronRightIcon fontSize="small" />
       </IconButton>
 
+      {/* Lock icon removed - subjects are always accessible, only first chapter is locked */}
       <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <Avatar sx={{ bgcolor: accent, width: 44, height: 44 }}>
           {icon}
@@ -97,59 +102,142 @@ function SubjectCard({
 
 const cookies = new Cookies();
 
-/* ---------- Page ---------- */
-export default function SubjectPage() {
-  const router = useRouter();
-  const [activeImage, setActiveImage] = useState(DEFAULT_IMG);
-
-  useEffect(() => {
-    // Check if user is logged in
-    const token = cookies.get("token");
-    const selectedChildId = cookies.get("selectedChildId");
-    const selectedChildClass = cookies.get("selectedChildClass");
-    if (!token || !selectedChildId || !selectedChildClass) {
-      router.push("/profiles");
-    }
-  }, [router]);
-
-  const subjects = [
-    {
-      title: 'Mathematics',
+// Subject configuration mapping
+const getSubjectConfig = (subjectName) => {
+  const name = subjectName.toLowerCase();
+  
+  if (name.includes('math') || name.includes('mathematics')) {
+    return {
       subtitle: 'Number puzzles & fun',
       slug: 'math',
       bg: '#E9ECFF',
       accent: '#7788F8',
       icon: <CalculateIcon />,
       image: MATH_IMG,
-    },
-    {
-      title: 'Science',
+    };
+  } else if (name.includes('science')) {
+    return {
       subtitle: "Discover nature's secrets",
       slug: 'science',
       bg: '#E7FAF0',
       accent: '#54C08A',
       icon: <ScienceIcon />,
       image: SCIENCE_IMG,
-    },
-    {
-      title: 'English',
+    };
+  } else if (name.includes('english') || name.includes('language')) {
+    return {
       subtitle: 'Stories & reading',
       slug: 'english',
       bg: '#FBE6EF',
       accent: '#F06AAE',
       icon: <MenuBookIcon />,
       image: ENGLISH_IMG,
-    },
-    {
-      title: 'Arts & Creativity',
+    };
+  } else if (name.includes('art') || name.includes('creativity') || name.includes('arts')) {
+    return {
       subtitle: 'Draw & paint',
       slug: 'arts',
       bg: '#FFF4DD',
       accent: '#FFB74D',
       icon: <BrushIcon />,
       image: ARTS_IMG,
-    },
-  ];
+    };
+  } else {
+    // Default configuration for unknown subjects
+    return {
+      subtitle: 'Explore & learn',
+      slug: name.replace(/\s+/g, '-').toLowerCase(),
+      bg: '#F5F5F5',
+      accent: '#9E9E9E',
+      icon: <MenuBookIcon />,
+      image: DEFAULT_IMG,
+    };
+  }
+};
+
+/* ---------- Page ---------- */
+export default function SubjectPage() {
+  const router = useRouter();
+  const [activeImage, setActiveImage] = useState(DEFAULT_IMG);
+  const [subjects, setSubjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      const token = cookies.get("token");
+      const selectedChildId = cookies.get("selectedChildId");
+      const selectedChildClass = cookies.get("selectedChildClass");
+      
+      if (!token || !selectedChildId || !selectedChildClass) {
+        router.push("/profiles");
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        
+        console.log("Fetching subjects for class:", selectedChildClass, "childId:", selectedChildId);
+        console.log("Full URL:", `/api/v1/subject/by-class/${selectedChildClass}?childId=${selectedChildId}`);
+        
+        const response = await axios.get(`/api/v1/subject/by-class/${selectedChildClass}`, {
+          params: { childId: selectedChildId },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        console.log("Subjects response:", response.data);
+
+        if (response.status === 200 && response.data.subjects) {
+          const backendSubjects = response.data.subjects;
+          
+          console.log("Backend subjects received:", backendSubjects.map(s => ({ name: s.name, locked: s.locked })));
+          
+          // Map backend subjects to frontend format
+          const mappedSubjects = backendSubjects.map((subject) => {
+            const config = getSubjectConfig(subject.name);
+            const mapped = {
+              _id: subject._id,
+              title: subject.name,
+              subtitle: config.subtitle,
+              slug: config.slug,
+              bg: config.bg,
+              accent: config.accent,
+              icon: config.icon,
+              image: config.image,
+              locked: false, // Always show subjects as unlocked - only first chapter is locked
+            };
+            console.log("Mapped subject:", mapped.title, "locked:", mapped.locked);
+            return mapped;
+          });
+          
+          console.log("Final subjects array:", mappedSubjects.map(s => ({ title: s.title, locked: s.locked })));
+          setSubjects(mappedSubjects);
+        }
+      } catch (error) {
+        console.error("Error fetching subjects:", error);
+        if (error.response) {
+          if (error.response.status === 401) {
+            cookies.remove("token");
+            router.push("/profiles");
+            return;
+          } else if (error.response.status === 404) {
+            setError("Subjects endpoint not found. Please check server configuration.");
+          } else {
+            setError(error.response.data?.message || "Failed to load subjects. Please try again.");
+          }
+        } else {
+          setError("Network error. Please check if the server is running.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSubjects();
+  }, [router]);
 
   return (
     <AuthFrame showBack={false}>
@@ -193,10 +281,9 @@ export default function SubjectPage() {
               </Tooltip> */}
             </Stack>
 
-            <Avatar
-              src={AVATAR_IMG}
-              sx={{ position: "absolute", right: 0, top: 0 }}
-            />
+            <Box sx={{ position: "absolute", right: 0, top: 0 }}>
+              <UserProfileMenu />
+            </Box>
           </Box>
 
           <Divider sx={{ mb: 2 }} />
@@ -225,51 +312,63 @@ export default function SubjectPage() {
                 gap: 2,
               }}
             >
-              {subjects.map((s) => (
-                <SubjectCard
-                  key={s.slug}
-                  {...s}
-                  onHover={() => setActiveImage(s.image)}
-                  onLeave={() => setActiveImage(DEFAULT_IMG)}
-                  onClick={() => {
-                    // Store subject info in cookies and route to chapters
-                    const selectedChildClass =
-                      cookies.get("selectedChildClass");
-                    const selectedChildId = cookies.get("selectedChildId");
+              {loading ? (
+                <Typography>Loading subjects...</Typography>
+              ) : error ? (
+                <Typography color="error">{error}</Typography>
+              ) : subjects.length === 0 ? (
+                <Typography>No subjects available for your class.</Typography>
+              ) : (
+                subjects.map((s) => (
+                  <SubjectCard
+                    key={s._id || s.slug}
+                    {...s}
+                    onHover={() => setActiveImage(s.image)}
+                    onLeave={() => setActiveImage(DEFAULT_IMG)}
+                    onClick={() => {
+                      // Subjects are always clickable - only first chapter is accessible
+                      // Store subject info in cookies and route to chapters
+                      const selectedChildClass = cookies.get("selectedChildClass");
+                      const selectedChildId = cookies.get("selectedChildId");
 
-                    if (!selectedChildId || !selectedChildClass) {
-                      console.error(
-                        "Child ID or Class not found. Redirecting to profiles."
-                      );
-                      router.push("/profiles");
-                      return;
-                    }
+                      if (!selectedChildId || !selectedChildClass) {
+                        console.error(
+                          "Child ID or Class not found. Redirecting to profiles."
+                        );
+                        router.push("/profiles");
+                        return;
+                      }
 
-                    cookies.set("selectedSubjectName", s.title, {
-                      path: "/",
-                      maxAge: 30 * 24 * 60 * 60,
-                    });
-                    cookies.set("selectedSubjectSlug", s.slug, {
-                      path: "/",
-                      maxAge: 30 * 24 * 60 * 60,
-                    });
+                      cookies.set("selectedSubjectName", s.title, {
+                        path: "/",
+                        maxAge: 30 * 24 * 60 * 60,
+                      });
+                      cookies.set("selectedSubjectSlug", s.slug, {
+                        path: "/",
+                        maxAge: 30 * 24 * 60 * 60,
+                      });
+                      cookies.set("selectedSubjectId", s._id, {
+                        path: "/",
+                        maxAge: 30 * 24 * 60 * 60,
+                      });
 
-                    // Ensure child class is still set
-                    cookies.set("selectedChildClass", selectedChildClass, {
-                      path: "/",
-                      maxAge: 30 * 24 * 60 * 60,
-                    });
+                      // Ensure child class is still set
+                      cookies.set("selectedChildClass", selectedChildClass, {
+                        path: "/",
+                        maxAge: 30 * 24 * 60 * 60,
+                      });
 
-                    console.log("Redirecting to chapters with:", {
-                      subject: s.title,
-                      childClass: selectedChildClass,
-                      childId: selectedChildId,
-                    });
+                      console.log("Redirecting to chapters with:", {
+                        subject: s.title,
+                        childClass: selectedChildClass,
+                        childId: selectedChildId,
+                      });
 
-                    router.push("/chapters");
-                  }}
-                />
-              ))}
+                      router.push("/chapters");
+                    }}
+                  />
+                ))
+              )}
             </Box>
 
             {/* RIGHT: Image (height locked to cards) */}

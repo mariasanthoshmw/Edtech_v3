@@ -33,7 +33,10 @@ const requireLogin = (req, res, next) => {
       }
       
       req.user = user;
-      console.log("User authenticated:", user.name);
+      req.user._id = user._id;
+      
+      console.log("🔐 User authenticated - ID:", user._id, "Email:", user.email);
+      
       next();
     } catch (error) {
       console.log("Error fetching user:", error);

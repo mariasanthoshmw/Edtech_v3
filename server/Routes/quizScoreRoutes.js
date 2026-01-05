@@ -2,14 +2,84 @@ const mongoose = require("mongoose");
 const requireLogin = require("../middleware/requireLogin");
 const QuizScore = mongoose.model("quizscores");
 const QuizQuestion = mongoose.model("quizquestions");
-const Child = mongoose.model("children");
+const User = mongoose.model("edtechusers");
 const Chapter = mongoose.model("chapters");
 
 module.exports = (app) => {
+  // Save Quiz Score (Simple - just score and total)
+  app.post("/api/v1/quiz/save-score", requireLogin, async (req, res) => {
+    const { childId, chapterId, score, totalMarks } = req.body;
+    const parentId = req.user._id;
+
+    console.log("📊 SAVE QUIZ SCORE - Request received:", {
+      childId,
+      chapterId,
+      score,
+      totalMarks,
+      parentId
+    });
+
+    try {
+      if (!childId || !chapterId || score === undefined || totalMarks === undefined) {
+        console.log("❌ SAVE QUIZ SCORE - Missing required fields");
+        return res.status(400).json({ 
+          message: "Child ID, Chapter ID, score, and totalMarks are required" 
+        });
+      }
+
+      const child = await User.findOne({ _id: childId, parentId, isParent: { $ne: true } });
+      if (!child) {
+        console.log("❌ SAVE QUIZ SCORE - Child not found");
+        return res.status(404).json({ 
+          message: "Child not found or you don't have permission" 
+        });
+      }
+
+      const chapter = await Chapter.findById(chapterId);
+      if (!chapter) {
+        console.log("❌ SAVE QUIZ SCORE - Chapter not found");
+        return res.status(404).json({ message: "Chapter not found" });
+      }
+
+      const percentage = Math.round((score / totalMarks) * 100);
+
+      console.log("✅ SAVE QUIZ SCORE - Creating score document in MongoDB...");
+      const quizScore = await QuizScore.create({
+        childId,
+        chapterId,
+        score,
+        totalMarks,
+        percentage
+      });
+
+      console.log("✅ SAVE QUIZ SCORE - Score saved to MongoDB:", {
+        quizScoreId: quizScore._id,
+        childId: quizScore.childId,
+        chapterId: quizScore.chapterId,
+        score: quizScore.score,
+        totalMarks: quizScore.totalMarks,
+        percentage: quizScore.percentage
+      });
+
+      res.status(201).json({ 
+        message: "Quiz score saved successfully!",
+        result: {
+          score,
+          totalMarks,
+          percentage,
+          quizScoreId: quizScore._id
+        }
+      });
+    } catch (error) {
+      console.error("❌ SAVE QUIZ SCORE - Error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Submit Quiz (Child completes quiz)
   app.post("/api/v1/quiz/submit", requireLogin, async (req, res) => {
     const { childId, chapterId, answers } = req.body;
-    const parentId = req.user.id;
+    const parentId = req.user._id;
 
     try {
       // Validate required fields
@@ -20,7 +90,7 @@ module.exports = (app) => {
       }
 
       // Verify child belongs to parent
-      const child = await Child.findOne({ _id: childId, parentId });
+      const child = await User.findOne({ _id: childId, parentId, isParent: { $ne: true } });
       if (!child) {
         return res.status(404).json({ 
           message: "Child not found or you don't have permission" 
@@ -55,15 +125,16 @@ module.exports = (app) => {
         }
       });
 
+      const percentage = Math.round((score / totalMarks) * 100);
+
       // Save quiz score
       const quizScore = await QuizScore.create({
         childId,
         chapterId,
         score,
-        totalMarks
+        totalMarks,
+        percentage
       });
-
-      const percentage = Math.round((score / totalMarks) * 100);
 
       res.status(201).json({ 
         message: "Quiz submitted successfully!",
@@ -83,11 +154,11 @@ module.exports = (app) => {
   // Get Quiz Scores for a Child
   app.get("/api/v1/quiz/scores/child/:childId", requireLogin, async (req, res) => {
     const { childId } = req.params;
-    const parentId = req.user.id;
+    const parentId = req.user._id;
 
     try {
       // Verify child belongs to parent
-      const child = await Child.findOne({ _id: childId, parentId });
+      const child = await User.findOne({ _id: childId, parentId, isParent: { $ne: true } });
       if (!child) {
         return res.status(404).json({ 
           message: "Child not found or you don't have permission" 
@@ -117,11 +188,11 @@ module.exports = (app) => {
   // Get Quiz Scores for a Specific Chapter
   app.get("/api/v1/quiz/scores/child/:childId/chapter/:chapterId", requireLogin, async (req, res) => {
     const { childId, chapterId } = req.params;
-    const parentId = req.user.id;
+    const parentId = req.user._id;
 
     try {
       // Verify child belongs to parent
-      const child = await Child.findOne({ _id: childId, parentId });
+      const child = await User.findOne({ _id: childId, parentId, isParent: { $ne: true } });
       if (!child) {
         return res.status(404).json({ 
           message: "Child not found or you don't have permission" 
@@ -155,7 +226,7 @@ module.exports = (app) => {
   // Get Quiz Score by ID (Detailed view)
   app.get("/api/v1/quiz/score/:scoreId", requireLogin, async (req, res) => {
     const { scoreId } = req.params;
-    const parentId = req.user.id;
+    const parentId = req.user._id;
 
     try {
       const quizScore = await QuizScore.findById(scoreId)
@@ -167,9 +238,10 @@ module.exports = (app) => {
       }
 
       // Verify child belongs to parent
-      const child = await Child.findOne({ 
+      const child = await User.findOne({ 
         _id: quizScore.childId._id, 
-        parentId 
+        parentId,
+        isParent: { $ne: true }
       });
       
       if (!child) {
@@ -190,7 +262,7 @@ module.exports = (app) => {
   // Delete Quiz Score (Admin/Testing)
   app.delete("/api/v1/quiz/score/:scoreId", requireLogin, async (req, res) => {
     const { scoreId } = req.params;
-    const parentId = req.user.id;
+    const parentId = req.user._id;
 
     try {
       const quizScore = await QuizScore.findById(scoreId);
@@ -200,9 +272,10 @@ module.exports = (app) => {
       }
 
       // Verify child belongs to parent
-      const child = await Child.findOne({ 
+      const child = await User.findOne({ 
         _id: quizScore.childId, 
-        parentId 
+        parentId,
+        isParent: { $ne: true }
       });
       
       if (!child) {

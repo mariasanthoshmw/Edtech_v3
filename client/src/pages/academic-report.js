@@ -270,7 +270,7 @@ export default function AcademicReport() {
                                         color: "#666666",
                                       }}
                                     >
-                                      Quiz: {chapter.quizScore}/{chapter.totalMarks}
+                                      Quiz: {chapter.quizScore}/{chapter.totalMarks} ({chapter.percentage || Math.round((chapter.quizScore / chapter.totalMarks) * 100)}%)
                                     </Typography>
                                   )}
                                 </Box>

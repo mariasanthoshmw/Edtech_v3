@@ -211,8 +211,28 @@ module.exports = (app) => {
   app.get("/api/v1/parent/children", requireLogin, async (req, res) => {
     try {
       const parentId = req.user._id;
-      const children = await User.find({ parentId, isParent: { $ne: true } });
+      
+      console.log("🔍 Fetching children for parent ID:", parentId);
+      console.log("🔍 Parent email:", req.user.email);
+      console.log("🔍 Parent isParent:", req.user.isParent);
+      
+      // Ensure we're only getting children for this specific parent
+      // Convert to ObjectId if needed for proper comparison
+      const mongoose = require("mongoose");
+      const parentObjectId = mongoose.Types.ObjectId.isValid(parentId) 
+        ? new mongoose.Types.ObjectId(parentId) 
+        : parentId;
+      
+      const children = await User.find({ 
+        parentId: parentObjectId, 
+        isParent: { $ne: true } 
+      });
 
+      console.log("✅ Found children:", children.length, "for parent:", parentId);
+      if (children.length > 0) {
+        console.log("✅ First child parentId:", children[0].parentId);
+      }
+      
       res.status(200).json({ 
         children: children.map(child => ({
           id: child._id,
@@ -223,6 +243,7 @@ module.exports = (app) => {
         }))
       });
     } catch (error) {
+      console.error("❌ Error fetching children:", error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -233,6 +254,10 @@ module.exports = (app) => {
       const { name, classno, emoji } = req.body;
       const parentId = req.user._id;
 
+      console.log("👶 Creating child for parent:", parentId);
+      console.log("👶 Parent email:", req.user.email);
+      console.log("👶 Child details:", { name, classno, emoji });
+
       if (!name || !classno) {
         return res.status(400).json({ message: "Name and class are required" });
       }
@@ -241,9 +266,11 @@ module.exports = (app) => {
         name,
         classno,
         emoji: emoji || "🐱",
-        parentId,
+        parentId: parentId, // Explicitly set parentId
         isParent: false
       });
+
+      console.log("✅ Child created with parentId:", child.parentId);
 
       const subjects = await Subject.find({ classnumber: classno });
 
@@ -543,20 +570,39 @@ module.exports = (app) => {
   app.get("/api/v1/parent/academic-report", requireLogin, async (req, res) => {
     try {
       const parentId = req.user._id;
+      const { childId } = req.query;
       const Progress = mongoose.model("progress");
       const QuizScore = mongoose.model("quizscores");
       const Chapter = mongoose.model("chapters");
       const Subject = mongoose.model("subjects");
+      const Attempt = mongoose.model("attempts");
 
-      const children = await User.find({ parentId, isParent: { $ne: true } });
+      let children;
+      if (childId) {
+        const child = await User.findOne({ _id: childId, parentId, isParent: { $ne: true } });
+        children = child ? [child] : [];
+      } else {
+        children = await User.find({ parentId, isParent: { $ne: true } });
+      }
 
       const reports = await Promise.all(
         children.map(async (child) => {
           const subjects = await Subject.find({ classnumber: child.classno });
 
+          let totalQuizzes = 0;
+          let totalCompletedCourses = 0;
+          let totalScoreSum = 0;
+          let totalMarksSum = 0;
+          let totalAttempts = 0;
+
           const subjectReports = await Promise.all(
             subjects.map(async (subject) => {
               const chapters = await Chapter.find({ subjectId: subject._id });
+
+              let subjectQuizCount = 0;
+              let subjectCompletedCourses = 0;
+              let subjectScoreSum = 0;
+              let subjectTotalMarksSum = 0;
 
               const chapterProgress = await Promise.all(
                 chapters.map(async (chapter) => {
@@ -569,21 +615,41 @@ module.exports = (app) => {
                   const quizScore = await QuizScore.findOne({
                     childId: child._id,
                     chapterId: chapter._id
-                  });
+                  }).sort({ createdAt: -1 }).lean();
+
+                  if (progress) {
+                    subjectCompletedCourses++;
+                  }
+
+                  if (quizScore) {
+                    subjectQuizCount++;
+                    subjectScoreSum += quizScore.score || 0;
+                    subjectTotalMarksSum += quizScore.totalMarks || 0;
+                  }
 
                   return {
                     chapterId: chapter._id,
                     chapterName: chapter.name,
                     completed: !!progress,
                     quizScore: quizScore ? quizScore.score : null,
-                    totalMarks: quizScore ? quizScore.totalMarks : null
+                    totalMarks: quizScore ? quizScore.totalMarks : null,
+                    percentage: quizScore ? quizScore.percentage : null
                   };
                 })
               );
 
+              totalQuizzes += subjectQuizCount;
+              totalCompletedCourses += subjectCompletedCourses;
+              totalScoreSum += subjectScoreSum;
+              totalMarksSum += subjectTotalMarksSum;
+
               const completedChapters = chapterProgress.filter(cp => cp.completed).length;
               const totalChapters = chapters.length;
               const completionPercentage = totalChapters > 0 ? (completedChapters / totalChapters) * 100 : 0;
+
+              const avgScore = subjectTotalMarksSum > 0 
+                ? Math.round((subjectScoreSum / subjectTotalMarksSum) * 100) 
+                : 0;
 
               return {
                 subjectId: subject._id,
@@ -591,16 +657,33 @@ module.exports = (app) => {
                 totalChapters,
                 completedChapters,
                 completionPercentage: Math.round(completionPercentage),
+                quizCount: subjectQuizCount,
+                avgScore,
+                totalScore: subjectScoreSum,
+                totalMarks: subjectTotalMarksSum,
                 chapters: chapterProgress
               };
             })
           );
+
+          const attempts = await Attempt.find({ childId: child._id });
+          totalAttempts = attempts.length;
+
+          const overallAvgScore = totalMarksSum > 0 
+            ? Math.round((totalScoreSum / totalMarksSum) * 100) 
+            : 0;
 
           return {
             childId: child._id,
             childName: child.name,
             classno: child.classno,
             emoji: child.emoji,
+            summary: {
+              totalQuizzes,
+              completedCourses: totalCompletedCourses,
+              avgScore: overallAvgScore,
+              totalAttempts
+            },
             subjects: subjectReports
           };
         })

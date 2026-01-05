@@ -65,17 +65,10 @@ module.exports = (app) => {
       const childUser = childId ? await User.findById(childId) : null;
       const childParentId = childUser?.parentId || parentId;
       
-      // Check parent subscription
-      let isSubscribed = false;
-      if (childParentId) {
-        const parent = await User.findById(childParentId);
-        isSubscribed = parent?.subscriptionStatus === 'active';
-      }
-
       // Check if subject is unlocked for the child (or parent if no childId)
       const userSubject = await UserSubject.findOne({ userId: actualUserId, subjectId });
 
-      // First chapter is always free, rest require subscription or purchase
+      // First chapter is always free, rest require subject purchase (not subscription)
       const chapters = await Chapters.find({ subjectId }).sort({ _id: 1 }); // Sort by creation order
 
       if (!chapters || chapters.length === 0) {
@@ -90,18 +83,20 @@ module.exports = (app) => {
       });
 
       // Map chapters with status
+      // Only first chapter is unlocked, all others require subject purchase
       const chaptersWithStatus = chapters.map((chapter, index) => {
         const isFirstChapter = index === 0;
         const progress = progressMap[chapter._id.toString()];
         const isCompleted = progress?.completed || false;
         
         // Determine if chapter is accessible
+        // Only first chapter is unlocked, all others require subject purchase
         let status = "locked";
         if (isFirstChapter) {
+          // First chapter is always accessible
           status = isCompleted ? "completed" : "in-progress";
         } else if (userSubject && !userSubject.locked) {
-          status = isCompleted ? "completed" : "in-progress";
-        } else if (isSubscribed) {
+          // Other chapters require subject purchase
           status = isCompleted ? "completed" : "in-progress";
         }
 
@@ -120,8 +115,7 @@ module.exports = (app) => {
       res.status(200).json({ 
         message: "Chapters retrieved successfully", 
         chapters: chaptersWithStatus,
-        locked: !userSubject || userSubject.locked,
-        isSubscribed
+        locked: !userSubject || userSubject.locked
       });
     } catch (error) {
       console.error("Error in chapters route:", error);
@@ -159,23 +153,15 @@ module.exports = (app) => {
       const allChapters = await Chapters.find({ subjectId: chapter.subjectId }).sort({ _id: 1 });
       const isFirstChapter = allChapters[0]?._id.toString() === chapterId;
 
-      // Get user to check subscription
-      const user = await User.findById(actualUserId);
-      const userParentId = user?.parentId || parentId;
-      let isSubscribed = false;
-      if (userParentId) {
-        const parent = await User.findById(userParentId);
-        isSubscribed = parent?.subscriptionStatus === 'active';
-      }
-
       // Check if the subject this chapter belongs to is unlocked
       const userSubject = await UserSubject.findOne({ 
         userId: actualUserId, 
         subjectId: chapter.subjectId 
       });
 
-      // First chapter is always accessible
-      if (!isFirstChapter && (!userSubject || userSubject.locked) && !isSubscribed) {
+      // Only first chapter is accessible without purchase
+      // All other chapters require subject purchase
+      if (!isFirstChapter && (!userSubject || userSubject.locked)) {
         return res.status(403).json({ 
           message: "Subject is locked. Please purchase to access this chapter.",
           locked: true

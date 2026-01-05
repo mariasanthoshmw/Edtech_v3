@@ -18,6 +18,7 @@ export default function QuizPage() {
   const [totalQuestions] = useState(8);
   const [score, setScore] = useState(0);
   const [isQuizComplete, setIsQuizComplete] = useState(false);
+  const [scoreSaved, setScoreSaved] = useState(false);
 
   const [childId, setChildId] = useState(null);
   const [subject, setSubject] = useState(null);
@@ -52,6 +53,55 @@ export default function QuizPage() {
   }, [childId, subject, chapterId]);
 
 
+  const saveQuizScore = async (finalScore = null) => {
+    if (scoreSaved) {
+      console.log("⚠️ QUIZ - Score already saved, skipping...");
+      return;
+    }
+
+    try {
+      const token = cookies.get("token");
+      if (!token || !childId || !chapterId) {
+        console.log("❌ QUIZ - Cannot save score: missing token, childId, or chapterId");
+        return;
+      }
+
+      const scoreToSave = finalScore !== null ? finalScore : score;
+      const percentage = Math.round((scoreToSave / totalQuestions) * 100);
+
+      console.log("📤 QUIZ - Saving score to database:", {
+        childId,
+        chapterId,
+        score: scoreToSave,
+        totalMarks: totalQuestions,
+        percentage
+      });
+
+      const response = await axios.post(
+        `${API_BASE}/api/v1/quiz/save-score`,
+        {
+          childId,
+          chapterId,
+          score: scoreToSave,
+          totalMarks: totalQuestions,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      console.log("✅ QUIZ - Score saved successfully:", response.data);
+      setScoreSaved(true);
+    } catch (error) {
+      console.error("❌ QUIZ - Error saving quiz score:", error);
+      if (error.response) {
+        console.error("❌ QUIZ - Error response:", error.response.data);
+      }
+    }
+  };
+
   const loadQuestion = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/quiz/start`, {
@@ -60,6 +110,7 @@ export default function QuizPage() {
 
       if (currentQ >= totalQuestions) {
         setIsQuizComplete(true);
+        await saveQuizScore();
         return;
       }
 
@@ -69,6 +120,7 @@ export default function QuizPage() {
           return;
         } else {
           setIsQuizComplete(true);
+          await saveQuizScore();
           return;
         }
       }
@@ -85,6 +137,9 @@ export default function QuizPage() {
 
     try {
       const isCorrect = option === question.correctAnswer;
+
+      // Calculate updated score
+      const updatedScore = isCorrect ? score + 1 : score;
 
       // Update score if correct
       if (isCorrect) {
@@ -103,6 +158,9 @@ export default function QuizPage() {
         setCurrentQ(totalQuestions);
         setIsQuizComplete(true);
         setQuestion(null);
+        
+        // Save score to database when quiz completes - use updated score
+        await saveQuizScore(updatedScore);
         return;
       }
 
@@ -123,6 +181,7 @@ export default function QuizPage() {
     setCurrentQ(1);
     setScore(0);
     setIsQuizComplete(false);
+    setScoreSaved(false);
     loadQuestion();
   };
 

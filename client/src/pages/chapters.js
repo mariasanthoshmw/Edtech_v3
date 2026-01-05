@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Head from "next/head";
-import { Box, Avatar, Chip, Button, Typography } from "@mui/material";
+import { Box, Chip, Button, Typography } from "@mui/material";
 import blackLogo from "../../public/Black logo (1).png";
 import { useRouter } from "next/router";
 import { Poppins } from "next/font/google";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LockIcon from "@mui/icons-material/Lock";
 import AuthFrame from "../components/common/AuthFrame";
+import UserProfileMenu from "../components/common/UserProfileMenu";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Cookies } from "react-cookie";
@@ -23,18 +24,22 @@ export default function Chapters() {
   const router = useRouter();
   const [subscriptionStatus, setSubscriptionStatus] = useState("trial");
   const [chaptersProgress, setChaptersProgress] = useState({});
+  const [chapters, setChapters] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const token = cookies.get("token");
   const parentEmail = cookies.get("parentEmail");
   const selectedChildId = cookies.get("selectedChildId");
   const selectedChildClass = cookies.get("selectedChildClass");
   const selectedSubjectName = cookies.get("selectedSubjectName");
+  const selectedSubjectId = cookies.get("selectedSubjectId");
 
   useEffect(() => {
     if (token && parentEmail) {
       fetchSubscriptionStatus();
-      fetchChaptersProgress();
+      fetchChapters();
     }
-  }, [token, parentEmail, selectedChildId]);
+  }, [token, parentEmail, selectedChildId, selectedSubjectId]);
 
   const fetchSubscriptionStatus = async () => {
     try {
@@ -52,128 +57,88 @@ export default function Chapters() {
     }
   };
 
-  const fetchChaptersProgress = async () => {
+  const fetchChapters = async () => {
     try {
-      if (!selectedSubjectName || !selectedChildClass) return;
+      setLoading(true);
+      setError(null);
 
-      // Get subject by name and class
-      const subjectsResponse = await axios.get("/api/v1/subject/all/get");
-      
-      if (subjectsResponse.status === 200) {
-        const allSubjects = subjectsResponse.data.subjects || [];
-        const subject = allSubjects.find(
-          (s) => s.name.toLowerCase().trim() === selectedSubjectName.toLowerCase().trim() && 
-               s.classnumber === parseInt(selectedChildClass)
-        );
+      if (!selectedSubjectId || !selectedChildId) {
+        setError("Subject or Child information missing");
+        setLoading(false);
+        return;
+      }
 
-        if (subject && subject._id) {
-          // Fetch chapters with progress for this subject
-          const chaptersResponse = await axios.get(
-            `/api/v1/chapters/by-subject/${subject._id}`,
-            {
-              params: {
-                childId: selectedChildId,
-              },
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          if (chaptersResponse.status === 200) {
-            const dbChapters = chaptersResponse.data.chapters || [];
-            
-            // Create a map of chapter name to status
-            const progressMap = {};
-            dbChapters.forEach((ch) => {
-              progressMap[ch.name.toLowerCase().trim()] = ch.status;
-            });
-            
-            setChaptersProgress(progressMap);
-          }
+      // Fetch chapters with progress for this subject
+      const chaptersResponse = await axios.get(
+        `/api/v1/chapters/by-subject/${selectedSubjectId}`,
+        {
+          params: {
+            childId: selectedChildId,
+          },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
+      );
+
+      if (chaptersResponse.status === 200) {
+        const dbChapters = chaptersResponse.data.chapters || [];
+        
+        // Map backend chapters to frontend format
+        const mappedChapters = dbChapters.map((chapter, index) => {
+          const isFirstChapter = index === 0;
+          const status = chapter.status || "locked";
+          
+          // Generate colors based on index
+          const colors = [
+            { icon: "#4A90E2", box: "#E3F2FD" },
+            { icon: "#9B59B6", box: "#F3E5F5" },
+            { icon: "#F39C12", box: "#FFF3E0" },
+            { icon: "#E91E63", box: "#FCE4EC" },
+            { icon: "#1ABC9C", box: "#E0F2F1" },
+            { icon: "#F1C40F", box: "#FFFDE7" },
+          ];
+          const colorIndex = index % colors.length;
+          const chapterColors = colors[colorIndex];
+
+          return {
+            id: chapter._id,
+            _id: chapter._id,
+            name: chapter.name,
+            description: chapter.description || "Learn and explore this chapter.",
+            status: status,
+            progress: chapter.progress || (status === "completed" ? 100 : status === "in-progress" ? 0 : 0),
+            iconColor: chapterColors.icon,
+            boxColor: chapterColors.box,
+            iconContent: (index + 1).toString(),
+            actionText: status === "completed" ? "Review Chapter →" : 
+                       status === "in-progress" ? "Continue →" : 
+                       isFirstChapter ? "Start Chapter →" : "Complete previous",
+            actionColor: status === "locked" && !isFirstChapter ? "#CCCCCC" : chapterColors.icon,
+            isFirstChapter: isFirstChapter,
+          };
+        });
+        
+        setChapters(mappedChapters);
+        
+        // Also create progress map for backward compatibility
+        const progressMap = {};
+        dbChapters.forEach((ch) => {
+          progressMap[ch.name.toLowerCase().trim()] = ch.status;
+        });
+        setChaptersProgress(progressMap);
       }
     } catch (error) {
-      console.error("Error fetching chapters progress:", error);
+      console.error("Error fetching chapters:", error);
+      setError("Failed to load chapters. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const chapters = [
-    {
-      id: 1,
-      name: "Number magic",
-      description: "Master the basics of counting and number patterns.",
-      status: "completed",
-      progress: 100,
-      iconColor: "#4A90E2",
-      boxColor: "#E3F2FD",
-      iconContent: "1",
-      actionText: "Review Chapter →",
-      actionColor: "#4A90E2",
-    },
-    {
-      id: 2,
-      name: "Addition and Subtraction",
-      description: "Learn to combine numbers and take them away.",
-      status: "in-progress",
-      progress: 65,
-      iconColor: "#9B59B6",
-      boxColor: "#F3E5F5",
-      iconContent: "+/-",
-      actionText: "Continue →",
-      actionColor: "#9B59B6",
-    },
-    {
-      id: 3,
-      name: "Shapes and Geometry",
-      description: "Discover triangles squares and circles around you.",
-      status: "locked",
-      progress: 0,
-      iconColor: "#F39C12",
-      boxColor: "#FFF3E0",
-      iconContent: "△",
-      actionText: "Complete previous",
-      actionColor: "#CCCCCC",
-    },
-    {
-      id: 4,
-      name: "Time and Clocks",
-      description: "Learn how to read the clock and manage time.",
-      status: "locked",
-      progress: 0,
-      iconColor: "#E91E63",
-      boxColor: "#FCE4EC",
-      iconContent: "🕐",
-      actionText: "Complete previous",
-      actionColor: "#CCCCCC",
-    },
-    {
-      id: 5,
-      name: "Patterns and Sequences",
-      description: "Find and continue fun patterns using colors, shapes, and numbers.",
-      status: "locked",
-      progress: 0,
-      iconColor: "#1ABC9C",
-      boxColor: "#E0F2F1",
-      iconContent: "🔄",
-      actionText: "Complete previous",
-      actionColor: "#CCCCCC",
-    },
-    {
-      id: 6,
-      name: "Money",
-      description: "Learn to count money and understand the money around you.",
-      status: "locked",
-      progress: 0,
-      iconColor: "#F1C40F",
-      boxColor: "#FFFDE7",
-      iconContent: "💰",
-      actionText: "Complete previous",
-      actionColor: "#CCCCCC",
-    },
-  ];
+  // Chapters are now fetched from backend - see fetchChapters()
 
-  const getStatusBadge = (status, chapterId) => {
+  const getStatusBadge = (status, isFirstChapter) => {
     if (status === "completed") {
       return (
         <Box
@@ -205,7 +170,7 @@ export default function Chapters() {
           In Progress
         </Box>
       );
-    } else if (chapterId === 1) {
+    } else if (isFirstChapter) {
       // First chapter is always free
       return (
         <Chip
@@ -223,11 +188,15 @@ export default function Chapters() {
       return (
         <Box
           sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
             color: "#999999",
             fontSize: "12px",
             fontWeight: "500",
           }}
         >
+          <LockIcon sx={{ fontSize: "16px" }} />
           Locked
         </Box>
       );
@@ -328,35 +297,33 @@ export default function Chapters() {
               </p>
             </Box>
 
-            {/* Right: Avatar */}
-            <Avatar
-              sx={{
-                width: 44,
-                height: 44,
-                backgroundColor: "#F39C12",
-                fontSize: "18px",
-              }}
-            >
-              U
-            </Avatar>
+            {/* Right: User Profile Menu */}
+            <UserProfileMenu />
           </Box>
         }
       >
         <Box sx={{ width: "100%", display: "flex", flexDirection: "column", paddingTop: "20px" }}>
           {/* Chapter Grid */}
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "1fr",
-                sm: "repeat(2, 1fr)",
-                md: "repeat(3, 1fr)",
-              },
-              gap: "16px",
-              paddingBottom: "20px",
-            }}
-          >
-            {chapters.map((chapter) => (
+          {loading ? (
+            <Typography>Loading chapters...</Typography>
+          ) : error ? (
+            <Typography color="error">{error}</Typography>
+          ) : chapters.length === 0 ? (
+            <Typography>No chapters available for this subject.</Typography>
+          ) : (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "repeat(2, 1fr)",
+                  md: "repeat(3, 1fr)",
+                },
+                gap: "16px",
+                paddingBottom: "20px",
+              }}
+            >
+              {chapters.map((chapter) => (
               <Box
                 key={chapter.id}
                 sx={{
@@ -369,14 +336,14 @@ export default function Chapters() {
                     transform: "translateY(-3px)",
                     boxShadow: "0 6px 12px rgba(0,0,0,0.1)",
                   },
-                  cursor: chapter.status === "locked" && chapter.id !== 1 ? "not-allowed" : "pointer",
-                  opacity: chapter.status === "locked" && chapter.id !== 1 ? 0.7 : 1,
+                  cursor: chapter.status === "locked" && !chapter.isFirstChapter ? "not-allowed" : "pointer",
+                  opacity: chapter.status === "locked" && !chapter.isFirstChapter ? 0.7 : 1,
                   display: "flex",
                   flexDirection: "column",
                   minHeight: "fit-content",
                 }}
                 onClick={async () => {
-                  if (chapter.status === "locked" && chapter.id !== 1) {
+                  if (chapter.status === "locked" && !chapter.isFirstChapter) {
                     if (subscriptionStatus !== "active") {
                       router.push("/subscription");
                     }
@@ -497,7 +464,7 @@ export default function Chapters() {
                   }}
                 >
                   {getIcon(chapter)}
-                  {getStatusBadge(chapter.status, chapter.id)}
+                  {getStatusBadge(chapter.status, chapter.isFirstChapter)}
                 </Box>
 
                 {/* Title with Status */}
@@ -585,7 +552,7 @@ export default function Chapters() {
                 </Box>
 
                 {/* Action Button */}
-                {chapter.status === "locked" && chapter.id !== 1 && subscriptionStatus !== "active" ? (
+                {chapter.status === "locked" && !chapter.isFirstChapter && subscriptionStatus !== "active" ? (
                   <Button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -616,10 +583,10 @@ export default function Chapters() {
                       color: chapter.actionColor,
                       fontSize: "13px",
                       fontWeight: "500",
-                      cursor: chapter.status === "locked" && chapter.id !== 1 ? "not-allowed" : "pointer",
+                      cursor: chapter.status === "locked" && !chapter.isFirstChapter ? "not-allowed" : "pointer",
                     }}
                   >
-                    {chapter.status === "locked" && chapter.id !== 1 && (
+                    {chapter.status === "locked" && !chapter.isFirstChapter && (
                       <LockIcon sx={{ fontSize: "16px" }} />
                     )}
                     <span>{chapter.actionText}</span>
@@ -627,7 +594,8 @@ export default function Chapters() {
                 )}
               </Box>
             ))}
-          </Box>
+            </Box>
+          )}
         </Box>
       </AuthFrame>
     </>
