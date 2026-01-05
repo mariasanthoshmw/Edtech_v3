@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { Cookies } from "react-cookie";
 import Head from "next/head";
 import AuthFrame from "../components/common/AuthFrame";
+import UserProfileMenu from "../components/common/UserProfileMenu";
 import { Box, Card, CardContent, Typography, Button, Chip } from "@mui/material";
 import { Poppins } from "next/font/google";
 import CardMembershipIcon from "@mui/icons-material/CardMembership";
@@ -24,15 +25,14 @@ export default function Subscription() {
   const router = useRouter();
 
   const token = cookies.get("token");
-  const parentEmail = cookies.get("parentEmail");
 
   useEffect(() => {
-    if (!token || !parentEmail) {
+    if (!token) {
       router.push("/");
       return;
     }
     fetchSubscription();
-  }, [token, parentEmail]);
+  }, [token]);
 
   const fetchSubscription = async () => {
     try {
@@ -46,7 +46,6 @@ export default function Subscription() {
 
       if (response.status === 401 || response.status === 403) {
         cookies.remove("token", { path: "/" });
-        cookies.remove("parentEmail", { path: "/" });
         router.push("/");
         return;
       }
@@ -56,7 +55,6 @@ export default function Subscription() {
       }
     } catch (error) {
       cookies.remove("token", { path: "/" });
-      cookies.remove("parentEmail", { path: "/" });
       router.push("/");
     } finally {
       setLoading(false);
@@ -66,27 +64,11 @@ export default function Subscription() {
   const handleSubscribe = async (type) => {
     try {
       setMessage("");
-      const response = await axios.post(
-        "/api/v1/parent/subscription",
-        { type },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.status === 200) {
-        setMessage("Subscription activated successfully! All children now have access.");
-        setMessageType("success");
-        fetchSubscription();
-        // Redirect to profiles after 2 seconds
-        setTimeout(() => {
-          router.push("/profiles");
-        }, 2000);
-      }
+      // Store subscription type in cookie and redirect to payment page
+      cookies.set("subscriptionType", type, { path: "/", maxAge: 30 * 60 }); // 30 minutes
+      router.push("/payment");
     } catch (error) {
-      setMessage("Failed to activate subscription. Please try again.");
+      setMessage("Failed to proceed to payment. Please try again.");
       setMessageType("error");
     }
   };
@@ -129,8 +111,14 @@ export default function Subscription() {
             padding: "20px",
             maxWidth: "800px",
             margin: "0 auto",
+            position: "relative",
           }}
         >
+          {/* User Profile Menu - Top Right */}
+          <Box sx={{ position: "absolute", right: 20, top: 0 }}>
+            <UserProfileMenu />
+          </Box>
+
           <Box
             sx={{
               display: "flex",

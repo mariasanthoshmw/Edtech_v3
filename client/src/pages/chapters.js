@@ -29,18 +29,22 @@ export default function Chapters() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const token = cookies.get("token");
-  const parentEmail = cookies.get("parentEmail");
-  const selectedChildId = cookies.get("selectedChildId");
-  const selectedChildClass = cookies.get("selectedChildClass");
-  const selectedSubjectName = cookies.get("selectedSubjectName");
-  const selectedSubjectId = cookies.get("selectedSubjectId");
+  
+  // Get combined cookies (already objects)
+  const selectedChild = cookies.get("selectedChild");
+  const selectedSubject = cookies.get("selectedSubject");
+
+  const selectedChildId = selectedChild?.id;
+  const selectedChildClass = selectedChild?.classno;
+  const selectedSubjectName = selectedSubject?.name;
+  const selectedSubjectId = selectedSubject?.id;
 
   useEffect(() => {
-    if (token && parentEmail) {
+    if (token) {
       fetchSubscriptionStatus();
       fetchChapters();
     }
-  }, [token, parentEmail, selectedChildId, selectedSubjectId]);
+  }, [token, selectedChildId, selectedSubjectId]);
 
   const fetchSubscriptionStatus = async () => {
     try {
@@ -53,7 +57,6 @@ export default function Chapters() {
 
       if (response.status === 401 || response.status === 403) {
         cookies.remove("token", { path: "/" });
-        cookies.remove("parentEmail", { path: "/" });
         router.push("/");
         return;
       }

@@ -139,19 +139,29 @@ module.exports = (app) => {
       const { childId } = req.body;
       const parentId = req.user._id;
 
+      console.log("🔐 DELETE OTP REQUEST - Parent ID:", parentId);
+      console.log("🔐 DELETE OTP REQUEST - Parent ID type:", typeof parentId);
+      console.log("🔐 DELETE OTP REQUEST - Child ID:", childId);
+
       if (!childId) {
         return res.status(400).json({ message: "Child ID is required" });
       }
 
       const child = await User.findOne({ _id: childId, parentId, isParent: { $ne: true } });
       if (!child) {
+        console.log("❌ Child not found or doesn't belong to parent");
         return res.status(404).json({ message: "Child profile not found" });
       }
 
       const parent = await User.findById(parentId);
       if (!parent || !parent.email) {
+        console.log("❌ Parent or parent email not found");
         return res.status(400).json({ message: "Parent email not found" });
       }
+
+      console.log("✅ Parent found:", parent.email);
+      console.log("✅ Parent ID in DB:", parent._id);
+      console.log("✅ Parent ID type in DB:", typeof parent._id);
 
       const digits = "0123456789";
       let newOTP = "";
@@ -159,9 +169,19 @@ module.exports = (app) => {
         newOTP += digits[Math.floor(Math.random() * digits.length)];
       }
 
-      await User.updateOne({ _id: parentId }, { $set: { otp: newOTP } });
+      console.log("🔑 Generated OTP:", newOTP);
+      console.log("💾 Attempting to save OTP to parent...");
 
-      console.log("Delete Profile OTP: ", newOTP);
+      // Use the parent document directly instead of updateOne
+      parent.otp = newOTP;
+      await parent.save();
+      
+      console.log("✅ Parent saved with new OTP");
+
+      // Verify OTP was saved
+      const parentAfterUpdate = await User.findById(parentId);
+      console.log("✅ OTP in database after save:", parentAfterUpdate.otp);
+      console.log("✅ OTPs match:", parentAfterUpdate.otp === newOTP);
 
       await sendEmail({
         to: parent.email,
@@ -169,8 +189,11 @@ module.exports = (app) => {
         text: `Your OTP to delete the profile is ${newOTP}.`,
       });
 
+      console.log("✅ Email sent successfully to:", parent.email);
+
       res.status(200).json({ message: "OTP sent successfully" });
     } catch (error) {
+      console.error("❌ Error in delete-otp route:", error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -182,17 +205,27 @@ module.exports = (app) => {
       const { otp } = req.body;
       const parentId = req.user._id;
 
+      console.log("🗑️ DELETE PROFILE - Parent ID:", parentId);
+      console.log("🗑️ DELETE PROFILE - Child ID:", childId);
+      console.log("🗑️ DELETE PROFILE - OTP provided:", otp);
+
       if (!otp) {
         return res.status(400).json({ message: "OTP is required" });
       }
 
       const parent = await User.findById(parentId);
+      console.log("🗑️ DELETE PROFILE - OTP in database:", parent?.otp);
+      
       if (!parent || parent.otp !== otp) {
+        console.log("❌ OTP mismatch or parent not found");
+        console.log("   Expected:", parent?.otp);
+        console.log("   Received:", otp);
         return res.status(400).json({ message: "Invalid OTP" });
       }
 
       const child = await User.findOne({ _id: childId, parentId, isParent: { $ne: true } });
       if (!child) {
+        console.log("❌ Child profile not found");
         return res.status(404).json({ message: "Child profile not found" });
       }
 
@@ -200,8 +233,11 @@ module.exports = (app) => {
       await UserSubject.deleteMany({ userId: childId });
       await User.updateOne({ _id: parentId }, { $set: { otp: null } });
 
+      console.log("✅ Child profile deleted successfully");
+
       res.status(200).json({ message: "Child profile deleted successfully" });
     } catch (error) {
+      console.error("❌ Error in delete profile route:", error);
       res.status(500).json({ message: error.message });
     }
   });

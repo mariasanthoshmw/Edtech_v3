@@ -23,16 +23,15 @@ export default function ScoreboardPage() {
 
   useEffect(() => {
     const checkCookies = () => {
-      const storedScore = cookies.get("quizScore");
-      const storedTotalQuestions = cookies.get("quizTotalQuestions");
-
-      if (storedScore === undefined || storedTotalQuestions === undefined) {
+      const quizData = cookies.get("quizData"); // Already an object
+      
+      if (!quizData) {
         router.replace("/chapters");
         return;
       }
 
-      const s = parseInt(storedScore, 10);
-      const tQ = parseInt(storedTotalQuestions, 10);
+      const s = parseInt(quizData.score, 10);
+      const tQ = parseInt(quizData.totalQuestions, 10);
       const p = tQ > 0 ? Math.round((s / tQ) * 100) : 0;
 
       setScore(s);
@@ -48,8 +47,7 @@ export default function ScoreboardPage() {
       }
 
       setTimeout(() => {
-        cookies.remove("quizScore", { path: "/" });
-        cookies.remove("quizTotalQuestions", { path: "/" });
+        cookies.remove("quizData", { path: "/" });
       }, 1000);
     };
 
@@ -59,8 +57,8 @@ export default function ScoreboardPage() {
     return () => clearTimeout(timeout);
   }, [router]);
 
-  const handleBackToChapters = () => {
-    router.push("/chapters");
+  const handleGoToLeaderboard = () => {
+    router.push("/leaderboard");
   };
 
   if (totalQuestions === 0) {
@@ -165,7 +163,7 @@ export default function ScoreboardPage() {
 
           <Button
             variant="contained"
-            onClick={handleBackToChapters}
+            onClick={handleGoToLeaderboard}
             sx={{
               bgcolor: "#FF8C00",
               color: "#FFFFFF",
@@ -181,7 +179,7 @@ export default function ScoreboardPage() {
               mt: 2,
             }}
           >
-            Back to Chapters
+            Go to Leaderboard 🏆
           </Button>
         </Box>
       </AuthFrame>

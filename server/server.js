@@ -44,7 +44,6 @@ mongoose
     casing must match folder name exactly
 -------------------------- */
 require("./models/User");
-require("./models/Child");
 require("./models/Subject");
 require("./models/Chapter");
 require("./models/Progress");
@@ -65,6 +64,7 @@ require("./Routes/childRoutes")(app);
 require("./Routes/chaptersRoutes")(app);
 require("./Routes/SubjectRoutes")(app);
 require("./Routes/paymentRoutes")(app);
+require("./Routes/leaderboardRoutes")(app);
 require("./Routes/quizQuestionRoutes")(app);
 require("./Routes/quizScoreRoutes")(app);
 

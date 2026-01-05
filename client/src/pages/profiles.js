@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { Cookies } from "react-cookie";
 import Head from "next/head";
 import AuthFrame from "../components/common/AuthFrame";
+import UserProfileMenu from "../components/common/UserProfileMenu";
 import { Box, Modal, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Chip, Button, Typography } from "@mui/material";
 import { Poppins } from "next/font/google";
 import EditIcon from "@mui/icons-material/Edit";
@@ -47,19 +48,13 @@ export default function Profiles() {
 
   //saving current avatar for the next pages in cookies 
   const AvatarHandling = (profile) => {
-    cookies.set("selectedChildId", profile.id, {
-      path: "/",
-      maxAge: 30 * 24 * 60 * 60,
-    });
-    cookies.set("selectedChildName", profile.name, {
-      path: "/",
-      maxAge: 30 * 24 * 60 * 60,
-    });
-    cookies.set("selectedChildClass", profile.classno, {
-      path: "/",
-      maxAge: 30 * 24 * 60 * 60,
-    });
-    cookies.set("selectedChildEmoji", profile.emoji, {
+    // Store child data as object (react-cookie will serialize it)
+    cookies.set("selectedChild", {
+      id: profile.id,
+      name: profile.name,
+      classno: profile.classno,
+      emoji: profile.emoji
+    }, {
       path: "/",
       maxAge: 30 * 24 * 60 * 60,
     }); 
@@ -69,15 +64,34 @@ export default function Profiles() {
 
   // Get token from cookies
   const token = cookies.get("token");
-  const parentEmail = cookies.get("parentEmail");
+  const [parentEmail, setParentEmail] = useState("");
 
   useEffect(() => {
-    if (!token || !parentEmail) {
+    if (!token) {
       router.push("/");
       return;
     }
+    
+    // Fetch parent email from /api/v1/me
+    const fetchUserInfo = async () => {
+      try {
+        const response = await axios.get("/api/v1/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.status === 200) {
+          setParentEmail(response.data.email);
+        }
+      } catch (error) {
+        cookies.remove("token", { path: "/" });
+        router.push("/");
+      }
+    };
+    
+    fetchUserInfo();
     checkSession();
-  }, [token, parentEmail]);
+  }, [token]);
 
   const checkSession = async () => {
     try {
@@ -91,7 +105,6 @@ export default function Profiles() {
 
       if (response.status === 401 || response.status === 403) {
         cookies.remove("token", { path: "/" });
-        cookies.remove("parentEmail", { path: "/" });
         router.push("/");
         return;
       }
@@ -100,10 +113,12 @@ export default function Profiles() {
         if (response.data.requiresOtp) {
           setRequiresOtp(true);
           setShowSessionOtp(true);
-          // Send OTP for session verification
-          await axios.post("/api/v1/parent/login", { email: parentEmail });
-          setMessage("Session expired. OTP sent to your email.");
-          setMessageType("error");
+          // Send OTP for session verification - need to fetch email first
+          if (parentEmail) {
+            await axios.post("/api/v1/parent/login", { email: parentEmail });
+            setMessage("Session expired. OTP sent to your email.");
+            setMessageType("error");
+          }
         } else {
           fetchProfiles();
           fetchSubscriptionStatus();
@@ -111,7 +126,6 @@ export default function Profiles() {
       }
     } catch (error) {
       cookies.remove("token", { path: "/" });
-      cookies.remove("parentEmail", { path: "/" });
       router.push("/");
     }
   };
@@ -149,7 +163,6 @@ export default function Profiles() {
 
       if (response.status === 401 || response.status === 403) {
         cookies.remove("token", { path: "/" });
-        cookies.remove("parentEmail", { path: "/" });
         router.push("/");
         return;
       }
@@ -159,7 +172,6 @@ export default function Profiles() {
       }
     } catch (error) {
       cookies.remove("token", { path: "/" });
-      cookies.remove("parentEmail", { path: "/" });
       router.push("/");
     } finally {
       setLoading(false);
@@ -177,7 +189,6 @@ export default function Profiles() {
 
       if (response.status === 401 || response.status === 403) {
         cookies.remove("token", { path: "/" });
-        cookies.remove("parentEmail", { path: "/" });
         router.push("/");
         return;
       }
@@ -187,7 +198,6 @@ export default function Profiles() {
       }
     } catch (error) {
       cookies.remove("token", { path: "/" });
-      cookies.remove("parentEmail", { path: "/" });
       router.push("/");
     }
   };
@@ -275,16 +285,25 @@ export default function Profiles() {
   };
 
   const handleProfileClick = (profile) => {
-    cookies.set("selectedChildId", profile.id, { path: "/", maxAge: 30 * 24 * 60 * 60 });
-    cookies.set("selectedChildName", profile.name, { path: "/", maxAge: 30 * 24 * 60 * 60 });
-    cookies.set("selectedChildClass", profile.classno, { path: "/", maxAge: 30 * 24 * 60 * 60 });
+    // Store child data as object (react-cookie will serialize it)
+    cookies.set("selectedChild", {
+      id: profile.id,
+      name: profile.name,
+      classno: profile.classno,
+      emoji: profile.emoji
+    }, { path: "/", maxAge: 30 * 24 * 60 * 60 });
     router.push("/Subject");
   };
 
   const handleAcademicReport = (profile, e) => {
     e.stopPropagation();
-    cookies.set("selectedChildId", profile.id, { path: "/", maxAge: 30 * 24 * 60 * 60 });
-    cookies.set("selectedChildName", profile.name, { path: "/", maxAge: 30 * 24 * 60 * 60 });
+    // Store child data as object (react-cookie will serialize it)
+    cookies.set("selectedChild", {
+      id: profile.id,
+      name: profile.name,
+      classno: profile.classno,
+      emoji: profile.emoji
+    }, { path: "/", maxAge: 30 * 24 * 60 * 60 });
     router.push("/academic-report");
   };
 
@@ -485,8 +504,14 @@ export default function Profiles() {
               marginBottom: "40px",
               width: "100%",
               maxWidth: "900px",
+              position: "relative",
             }}
           >
+            {/* User Profile Menu - Top Right */}
+            <Box sx={{ position: "absolute", right: 0, top: 0 }}>
+              <UserProfileMenu />
+            </Box>
+
             <Box sx={{ display: "flex", justifyContent: "center", marginBottom: 2 }}>
               {getSubscriptionBadge()}
             </Box>

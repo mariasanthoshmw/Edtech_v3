@@ -2,13 +2,13 @@ import Image from "next/image";
 import myImage from "../../public/Group 34.png";
 import logo from "../../public/logo.png";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useRouter } from "next/router";
 import { Cookies } from "react-cookie";
 
 import { Alfa_Slab_One, Poppins, Alegreya } from "next/font/google";
-import { Box, Button, TextField, Typography } from "@mui/material";
+import { Box, Button, TextField, Typography, CircularProgress } from "@mui/material";
 const alfaSlab = Alfa_Slab_One({
   weight: "400",
   subsets: ["latin"],
@@ -31,7 +31,50 @@ export default function Home() {
   const [showOtp, setShowOtp] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState(""); // "success" or "error"
+  const [checkingSession, setCheckingSession] = useState(true);
   const router = useRouter();
+
+  // Check for existing valid session on page load
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      const token = cookies.get("token");
+
+      // No token - show login form
+      if (!token) {
+        setCheckingSession(false);
+        return;
+      }
+
+      try {
+        // Check if session is still valid (within 7 days)
+        const response = await axios.get("/api/v1/parent/check-session", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          validateStatus: (status) => status === 200 || status === 401 || status === 403,
+        });
+
+        if (response.status === 200 && !response.data.requiresOtp) {
+          // Session is valid - auto-login and redirect to profiles
+          setMessage("Welcome back! Redirecting...");
+          setMessageType("success");
+          setTimeout(() => {
+            router.push("/profiles");
+          }, 1000);
+        } else {
+          // Session expired or invalid - clear token and show login form
+          cookies.remove("token", { path: "/" });
+          setCheckingSession(false);
+        }
+      } catch (error) {
+        // Error checking session - clear token and show login form
+        cookies.remove("token", { path: "/" });
+        setCheckingSession(false);
+      }
+    };
+
+    checkExistingSession();
+  }, [router]);
 
   const handleGetStarted = async () => {
     if (!email) {
@@ -60,7 +103,6 @@ export default function Home() {
             setShowOtp(true);
             setMessage("OTP sent to your email. Please check and enter it.");
             setMessageType("success");
-            cookies.set("parentEmail", email, { path: "/", maxAge: 30 * 24 * 60 * 60 });
           }
         } catch (otpError) {
           setMessage("Failed to send OTP. Please try again.");
@@ -70,7 +112,6 @@ export default function Home() {
     } catch (error) {
       // User doesn't exist - redirect to CreateAccount
       if (error.response && error.response.status === 404) {
-        cookies.set("parentEmail", email, { path: "/", maxAge: 30 * 24 * 60 * 60 });
         router.push("/CreateAccount");
       } else {
         setMessage("An error occurred. Please try again.");
@@ -93,9 +134,8 @@ export default function Home() {
       });
       
       if (response.status === 200) {
+        // Only store the token
         cookies.set("token", response.data.token);
-        cookies.set("parentEmail", email, { path: "/", maxAge: 30 * 24 * 60 * 60 });
-        cookies.set("user", response.data.user, { path: "/", maxAge: 30 * 24 * 60 * 60 });
         setMessage("Login successful! Redirecting...");
         setMessageType("success");
         
@@ -120,6 +160,39 @@ export default function Home() {
       setMessageType("error");
     }
   };
+
+  // Show loading spinner while checking session
+  if (checkingSession) {
+    return (
+      <Box
+        component="section"
+        sx={{
+          position: "relative",
+          width: "100%",
+          minHeight: "90vh",
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#fff",
+        }}
+      >
+        {/* Background image */}
+        <Box sx={{ position: "absolute", inset: 0, zIndex: 0 }}>
+          <Image src={myImage} alt="Kids learning illustration" priority fill sizes="200vw" style={{ objectFit: "contain" }} />
+        </Box>
+        
+        <Box sx={{ position: "relative", zIndex: 1, textAlign: "center" }}>
+          <CircularProgress size={60} sx={{ color: "#ffbf47" }} />
+          {message && (
+            <Typography sx={{ mt: 2, color: "#4caf50", fontSize: 18, fontWeight: 600 }}>
+              {message}
+            </Typography>
+          )}
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box
