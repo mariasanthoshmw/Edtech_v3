@@ -265,14 +265,21 @@ export default function Home() {
         }}
         className={poppins.className}
       >
-        <Typography className={alfaSlab.className} sx={{ fontSize: { xs: 34, md: 44 }, lineHeight: 1.1, fontWeight: 700 }}>
+        <Typography
+          sx={{
+            fontFamily: alfaSlab.style.fontFamily,
+            fontSize: { xs: 34, md: 44 },
+            lineHeight: 1.1,
+            fontWeight: 400, // Alfa Slab One only ships 400; avoid unintended fallback
+          }}
+        >
           Boost Your <br /> Child&apos;s Future
         </Typography>
 
-        <Typography className={alegreya.className} sx={{ fontSize: { xs: 18, md: 22 }, mt: 2 }}>
+        <Typography sx={{ fontFamily: alegreya.style.fontFamily, fontSize: { xs: 18, md: 22 }, mt: 2 }}>
           Unlocking potential. Your partner in
         </Typography>
-        <Typography className={alegreya.className} sx={{ fontSize: { xs: 18, md: 22 } }}>
+        <Typography sx={{ fontFamily: alegreya.style.fontFamily, fontSize: { xs: 18, md: 22 } }}>
           cultivating your child&apos;s educational journey.
         </Typography>
 
@@ -280,7 +287,7 @@ export default function Home() {
           {!showOtp ? (
             <>
               <TextField
-                label="Email"
+                label="Enter Your Email"
                 type="email"
                 value={email}
                 onChange={(e) => {

@@ -81,12 +81,20 @@ function SubjectCard({
           border: '1px solid rgba(0,0,0,0.08)',
         }}
       >
-        <ChevronRightIcon fontSize="small" />
+        <ChevronRightIcon fontSize="small" sx={{ color: "#333" }} />
       </IconButton>
 
       {/* Lock icon removed - subjects are always accessible, only first chapter is locked */}
       <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Avatar sx={{ bgcolor: accent, width: 44, height: 44 }}>
+        <Avatar
+          sx={{
+            bgcolor: accent,
+            width: 44,
+            height: 44,
+            color: "#fff",
+            "& svg": { color: "#fff" }, // prevent default MUI blue icons
+          }}
+        >
           {icon}
         </Avatar>
         <Box>
@@ -133,7 +141,7 @@ const getSubjectConfig = (subjectName) => {
       icon: <MenuBookIcon />,
       image: ENGLISH_IMG,
     };
-  } else if (name.includes('art') || name.includes('creativity') || name.includes('arts')) {
+  } else if (name.includes('arts') || name.includes('creativity') || name.includes('arts')) {
     return {
       subtitle: 'Draw & paint',
       slug: 'arts',
@@ -266,7 +274,11 @@ export default function SubjectPage() {
               sx={{ position: "absolute", right: 48, top: 0 }}
             >
               <Tooltip title="Leaderboard">
-                <IconButton size="medium">
+                <IconButton
+                  size="medium"
+                  aria-label="Open leaderboard"
+                  onClick={() => router.push("/leaderboard")}
+                >
                   <EmojiEventsIcon fontSize="medium" />
                 </IconButton>
               </Tooltip>

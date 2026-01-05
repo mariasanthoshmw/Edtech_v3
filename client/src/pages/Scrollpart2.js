@@ -29,10 +29,26 @@ export default function ScrollSection() {
           <Image src={dogImage} alt="Dog illustration" width={500} height={500} />
         </Box>
         <Box sx={{ flex: 1, textAlign: "center" }}>
-          <Typography className={alfaSlab.className} sx={{ color: "#1a8cff", fontSize: { xs: 26, md: 34 }, lineHeight: 1.25, mb: 2 }}>
+          <Typography
+            sx={{
+              fontFamily: alfaSlab.style.fontFamily,
+              fontWeight: 400,
+              color: "#1a8cff",
+              fontSize: { xs: 26, md: 34 },
+              lineHeight: 1.25,
+              mb: 2,
+            }}
+          >
             Learning Made Fun for Young Minds
           </Typography>
-          <Typography className={alegreya.className} sx={{ color: "#444", fontSize: { xs: 16, md: 20 }, lineHeight: 1.8 }}>
+          <Typography
+            sx={{
+              fontFamily: alegreya.style.fontFamily,
+              color: "#444",
+              fontSize: { xs: 16, md: 20 },
+              lineHeight: 1.8,
+            }}
+          >
             Our student-friendly tech platform helps children from Classes 1 to 5 learn through interactive lessons, games, and simple activities. Designed to build strong basics in a fun way, it encourages curiosity, creativity, and confidence while making learning enjoyable and stress-free.
           </Typography>
         </Box>

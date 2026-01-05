@@ -41,7 +41,6 @@ export default function Profiles() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
   const [subscriptionStatus, setSubscriptionStatus] = useState("trial");
-  const [requiresOtp, setRequiresOtp] = useState(false);
   const [sessionOtp, setSessionOtp] = useState("");
   const [showSessionOtp, setShowSessionOtp] = useState(false);
   const router = useRouter();
@@ -111,7 +110,6 @@ export default function Profiles() {
 
       if (response.status === 200) {
         if (response.data.requiresOtp) {
-          setRequiresOtp(true);
           setShowSessionOtp(true);
           // Send OTP for session verification - need to fetch email first
           if (parentEmail) {
@@ -138,7 +136,6 @@ export default function Profiles() {
       });
       if (response.status === 200) {
         cookies.set("token", response.data.token);
-        setRequiresOtp(false);
         setShowSessionOtp(false);
         setSessionOtp("");
         setMessage("");
@@ -549,7 +546,7 @@ export default function Profiles() {
               Parent Access Only
             </Typography>
             <Button
-              onClick={() => router.push("/subscription")}
+              onClick={() => router.push("/payment")}
               variant="outlined"
               startIcon={<CardMembershipIcon />}
               sx={{

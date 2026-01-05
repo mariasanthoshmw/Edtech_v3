@@ -60,6 +60,10 @@ export default function ScoreboardPage() {
   const handleGoToLeaderboard = () => {
     router.push("/leaderboard");
   };
+  
+  const handleSeeLeaderboard = () => {
+    router.push("/leaderboard");
+  };
 
   if (totalQuestions === 0) {
     return (
