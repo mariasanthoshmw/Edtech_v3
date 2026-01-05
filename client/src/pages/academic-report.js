@@ -25,7 +25,7 @@ export default function AcademicReport() {
 
   useEffect(() => {
     if (!token || !parentEmail) {
-      router.push("/parentlogin");
+      router.push("/");
       return;
     }
     fetchAcademicReport();
@@ -46,7 +46,7 @@ export default function AcademicReport() {
       console.error("Error fetching academic report:", error);
       if (error.response && error.response.status === 401) {
         cookies.remove("token");
-        router.push("/parentlogin");
+        router.push("/");
       }
     } finally {
       setLoading(false);

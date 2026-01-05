@@ -1,11 +1,12 @@
 import Image from "next/image";
 import Head from "next/head";
-import { Box, Chip, Button, Typography } from "@mui/material";
+import { Box, Chip, Button, Typography, IconButton } from "@mui/material";
 import blackLogo from "../../public/Black logo (1).png";
 import { useRouter } from "next/router";
 import { Poppins } from "next/font/google";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LockIcon from "@mui/icons-material/Lock";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import AuthFrame from "../components/common/AuthFrame";
 import UserProfileMenu from "../components/common/UserProfileMenu";
 import { useState, useEffect } from "react";
@@ -47,7 +48,16 @@ export default function Chapters() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        validateStatus: (status) => status === 200 || status === 401 || status === 403,
       });
+
+      if (response.status === 401 || response.status === 403) {
+        cookies.remove("token", { path: "/" });
+        cookies.remove("parentEmail", { path: "/" });
+        router.push("/");
+        return;
+      }
+
       if (response.status === 200) {
         setSubscriptionStatus(response.data.status || "trial");
       }
@@ -254,15 +264,12 @@ export default function Chapters() {
           >
             {/* Left: Logo and Back Button */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <div className="navbar-logo">
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Image src={blackLogo} alt="Study Pilot Logo" height={25} />
-              </div>
-              <button
-                className="back-btn"
-                onClick={() => router.back()}
-              >
-                ←
-              </button>
+              </Box>
+              <IconButton onClick={() => router.back()} aria-label="Go back" size="small">
+                <ArrowBackIosNewIcon fontSize="small" />
+              </IconButton>
             </Box>
 
             {/* Center: Title */}

@@ -1,129 +1,336 @@
 const mongoose = require("mongoose");
-const requireLogin = require("../middleware/requireLogin");
-const Child = mongoose.model("children");
+const requireParent = require("../middleware/requireParent");
+const User = mongoose.model("edtechusers");
+const Subject = mongoose.model("subjects");
 const UserSubject = mongoose.model("usersubjects");
-const Subjects = mongoose.model("subjects");
+const sendEmail = require("../utils/sendEmail");
+
+const otpLength = 6;
 
 module.exports = (app) => {
-
-  app.post("/api/v1/child/add", requireLogin, async (req, res) => {
-    const { name, classno, avatar } = req.body;
-    const parentId = req.user.id; 
-
+  // GET PARENT CHILDREN
+  app.get("/api/v1/parent/children", requireParent, async (req, res) => {
     try {
-      // Validate required fields
-      if (!name || !classno) {
-        return res.status(400).json({ 
-          message: "Name and class number are required"
-        });
-      }
-
-     
-      const existingChild = await Child.findOne({ name, parentId });
-      if (existingChild) {
-        return res.status(400).json({ 
-          message: "A child with this name already exists for your account"
-        });
-      }
-
-      // Create the child
-      const childFields = { 
-        name, 
-        classno,
-        parentId
-      };
-
-      // Add avatar if provided
-      if (avatar) {
-        childFields.avatar = avatar;
-      }
-
-      const child = await Child.create(childFields);
-
-      // Get all subjects for this class
-      const subjects = await Subjects.find({ classnumber: classno });
-      // console.log(`Found ${subjects.length} subjects for class ${classno}`);
-
+      const parentId = req.user._id;
       
-      if (subjects.length > 0) {
-        const userSubjects = subjects.map(subject => ({
-          userId: child._id, 
-          subjectId: subject._id,
-          locked: true 
-        }));
+      console.log("🔍 Fetching children for parent ID:", parentId);
+      console.log("🔍 Parent email:", req.user.email);
+      console.log("🔍 Parent isParent:", req.user.isParent);
+      
+      // Ensure we're only getting children for this specific parent
+      // Convert to ObjectId if needed for proper comparison
+      const parentObjectId = mongoose.Types.ObjectId.isValid(parentId) 
+        ? new mongoose.Types.ObjectId(parentId) 
+        : parentId;
+      
+      const children = await User.find({ 
+        parentId: parentObjectId, 
+        isParent: { $ne: true } 
+      });
 
-        const insertedUserSubjects = await UserSubject.insertMany(userSubjects);
-        // console.log(`Created ${insertedUserSubjects.length} locked UserSubject entries for child ${child.name}`);
-
-        res.status(201).json({ 
-          message: "Child added successfully", 
-          child: {
-            _id: child._id,
-            name: child.name,
-            classno: child.classno,
-            parentId: child.parentId
-          },
-          subjectsInitialized: insertedUserSubjects.length
-        });
-      } else {
-        res.status(201).json({ 
-          message: "Child added successfully (no subjects available for this class yet)", 
-          child: {
-            _id: child._id,
-            name: child.name,
-            classno: child.classno,
-            parentId: child.parentId
-          },
-          subjectsInitialized: 0
-        });
+      console.log("✅ Found children:", children.length, "for parent:", parentId);
+      if (children.length > 0) {
+        console.log("✅ First child parentId:", children[0].parentId);
       }
+      
+      res.status(200).json({ 
+        children: children.map(child => ({
+          id: child._id,
+          name: child.name,
+          email: child.email,
+          classno: child.classno,
+          emoji: child.emoji || "🐱"
+        }))
+      });
     } catch (error) {
-      console.log(error);
+      console.error("❌ Error fetching children:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
-  // Get All Children for logged-in parent
-  app.get("/api/v1/child/my-children", requireLogin, async (req, res) => {
-    const parentId = req.user.id;
-
+  // CREATE CHILD PROFILE
+  app.post("/api/v1/parent/child", requireParent, async (req, res) => {
     try {
-      const children = await Child.find({ parentId, isActive: true });
+      const { name, classno, emoji } = req.body;
+      const parentId = req.user._id;
 
-      if (!children || children.length === 0) {
-        return res.status(200).json({ 
-          message: "No children found",
-          children: []
-        });
+      console.log("👶 Creating child for parent:", parentId);
+      console.log("👶 Parent email:", req.user.email);
+      console.log("👶 Child details:", { name, classno, emoji });
+
+      if (!name || !classno) {
+        return res.status(400).json({ message: "Name and class are required" });
       }
 
-      // Get subject counts for each child
-      const childrenWithDetails = await Promise.all(
+      const child = await User.create({
+        name,
+        classno,
+        emoji: emoji || "🐱",
+        parentId: parentId,
+        isParent: false
+      });
+
+      console.log("✅ Child created with parentId:", child.parentId);
+
+      const subjects = await Subject.find({ classnumber: classno });
+
+      const userSubjects = subjects.map(subject => ({
+        userId: child._id,
+        subjectId: subject._id,
+        locked: true
+      }));
+
+      if (userSubjects.length > 0) {
+        await UserSubject.insertMany(userSubjects);
+      }
+
+      res.status(201).json({ 
+        message: "Child profile created successfully",
+        child: {
+          id: child._id,
+          name: child.name,
+          classno: child.classno,
+          emoji: child.emoji
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // UPDATE CHILD PROFILE
+  app.put("/api/v1/parent/child/:childId", requireParent, async (req, res) => {
+    try {
+      const { childId } = req.params;
+      const { name, classno, emoji } = req.body;
+      const parentId = req.user._id;
+
+      const child = await User.findOne({ _id: childId, parentId, isParent: { $ne: true } });
+      if (!child) {
+        return res.status(404).json({ message: "Child profile not found" });
+      }
+
+      const updateData = {};
+      if (name) updateData.name = name;
+      if (classno) updateData.classno = classno;
+      if (emoji) updateData.emoji = emoji;
+
+      await User.updateOne({ _id: childId }, { $set: updateData });
+
+      const updatedChild = await User.findById(childId);
+
+      res.status(200).json({
+        message: "Child profile updated successfully",
+        child: {
+          id: updatedChild._id,
+          name: updatedChild.name,
+          classno: updatedChild.classno,
+          emoji: updatedChild.emoji
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // DELETE CHILD PROFILE - SEND OTP
+  app.post("/api/v1/parent/child/delete-otp", requireParent, async (req, res) => {
+    try {
+      const { childId } = req.body;
+      const parentId = req.user._id;
+
+      if (!childId) {
+        return res.status(400).json({ message: "Child ID is required" });
+      }
+
+      const child = await User.findOne({ _id: childId, parentId, isParent: { $ne: true } });
+      if (!child) {
+        return res.status(404).json({ message: "Child profile not found" });
+      }
+
+      const parent = await User.findById(parentId);
+      if (!parent || !parent.email) {
+        return res.status(400).json({ message: "Parent email not found" });
+      }
+
+      const digits = "0123456789";
+      let newOTP = "";
+      for (let i = 0; i < otpLength; i++) {
+        newOTP += digits[Math.floor(Math.random() * digits.length)];
+      }
+
+      await User.updateOne({ _id: parentId }, { $set: { otp: newOTP } });
+
+      console.log("Delete Profile OTP: ", newOTP);
+
+      await sendEmail({
+        to: parent.email,
+        subject: "Delete Profile OTP",
+        text: `Your OTP to delete the profile is ${newOTP}.`,
+      });
+
+      res.status(200).json({ message: "OTP sent successfully" });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // DELETE CHILD PROFILE - VERIFY OTP AND DELETE
+  app.delete("/api/v1/parent/child/:childId", requireParent, async (req, res) => {
+    try {
+      const { childId } = req.params;
+      const { otp } = req.body;
+      const parentId = req.user._id;
+
+      if (!otp) {
+        return res.status(400).json({ message: "OTP is required" });
+      }
+
+      const parent = await User.findById(parentId);
+      if (!parent || parent.otp !== otp) {
+        return res.status(400).json({ message: "Invalid OTP" });
+      }
+
+      const child = await User.findOne({ _id: childId, parentId, isParent: { $ne: true } });
+      if (!child) {
+        return res.status(404).json({ message: "Child profile not found" });
+      }
+
+      await User.findByIdAndDelete(childId);
+      await UserSubject.deleteMany({ userId: childId });
+      await User.updateOne({ _id: parentId }, { $set: { otp: null } });
+
+      res.status(200).json({ message: "Child profile deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ACADEMIC REPORT
+  app.get("/api/v1/parent/academic-report", requireParent, async (req, res) => {
+    try {
+      const parentId = req.user._id;
+      const { childId } = req.query;
+      const Progress = mongoose.model("progress");
+      const QuizScore = mongoose.model("quizscores");
+      const Chapter = mongoose.model("chapters");
+      const Subject = mongoose.model("subjects");
+      const Attempt = mongoose.model("attempts");
+
+      let children;
+      if (childId) {
+        const child = await User.findOne({ _id: childId, parentId, isParent: { $ne: true } });
+        children = child ? [child] : [];
+      } else {
+        children = await User.find({ parentId, isParent: { $ne: true } });
+      }
+
+      const reports = await Promise.all(
         children.map(async (child) => {
-          const totalSubjects = await UserSubject.countDocuments({ userId: child._id });
-          const unlockedSubjects = await UserSubject.countDocuments({ 
-            userId: child._id, 
-            locked: false 
-          });
+          const subjects = await Subject.find({ classnumber: child.classno });
+
+          let totalQuizzes = 0;
+          let totalCompletedCourses = 0;
+          let totalScoreSum = 0;
+          let totalMarksSum = 0;
+          let totalAttempts = 0;
+
+          const subjectReports = await Promise.all(
+            subjects.map(async (subject) => {
+              const chapters = await Chapter.find({ subjectId: subject._id });
+
+              let subjectQuizCount = 0;
+              let subjectCompletedCourses = 0;
+              let subjectScoreSum = 0;
+              let subjectTotalMarksSum = 0;
+
+              const chapterProgress = await Promise.all(
+                chapters.map(async (chapter) => {
+                  const progress = await Progress.findOne({
+                    userId: child._id,
+                    chapterId: chapter._id,
+                    completed: true
+                  });
+
+                  const quizScore = await QuizScore.findOne({
+                    childId: child._id,
+                    chapterId: chapter._id
+                  }).sort({ createdAt: -1 }).lean();
+
+                  if (progress) {
+                    subjectCompletedCourses++;
+                  }
+
+                  if (quizScore) {
+                    subjectQuizCount++;
+                    subjectScoreSum += quizScore.score || 0;
+                    subjectTotalMarksSum += quizScore.totalMarks || 0;
+                  }
+
+                  return {
+                    chapterId: chapter._id,
+                    chapterName: chapter.name,
+                    completed: !!progress,
+                    quizScore: quizScore ? quizScore.score : null,
+                    totalMarks: quizScore ? quizScore.totalMarks : null,
+                    percentage: quizScore ? quizScore.percentage : null
+                  };
+                })
+              );
+
+              totalQuizzes += subjectQuizCount;
+              totalCompletedCourses += subjectCompletedCourses;
+              totalScoreSum += subjectScoreSum;
+              totalMarksSum += subjectTotalMarksSum;
+
+              const completedChapters = chapterProgress.filter(cp => cp.completed).length;
+              const totalChapters = chapters.length;
+              const completionPercentage = totalChapters > 0 ? (completedChapters / totalChapters) * 100 : 0;
+
+              const avgScore = subjectTotalMarksSum > 0 
+                ? Math.round((subjectScoreSum / subjectTotalMarksSum) * 100) 
+                : 0;
+
+              return {
+                subjectId: subject._id,
+                subjectName: subject.name,
+                totalChapters,
+                completedChapters,
+                completionPercentage: Math.round(completionPercentage),
+                quizCount: subjectQuizCount,
+                avgScore,
+                totalScore: subjectScoreSum,
+                totalMarks: subjectTotalMarksSum,
+                chapters: chapterProgress
+              };
+            })
+          );
+
+          const attempts = await Attempt.find({ childId: child._id });
+          totalAttempts = attempts.length;
+
+          const overallAvgScore = totalMarksSum > 0 
+            ? Math.round((totalScoreSum / totalMarksSum) * 100) 
+            : 0;
 
           return {
-            _id: child._id,
-            name: child.name,
+            childId: child._id,
+            childName: child.name,
             classno: child.classno,
-            avatar: child.avatar,
-            totalSubjects,
-            unlockedSubjects,
-            lockedSubjects: totalSubjects - unlockedSubjects
+            emoji: child.emoji,
+            summary: {
+              totalQuizzes,
+              completedCourses: totalCompletedCourses,
+              avgScore: overallAvgScore,
+              totalAttempts
+            },
+            subjects: subjectReports
           };
         })
       );
 
-      res.status(200).json({ 
-        message: "Children retrieved successfully",
-        children: childrenWithDetails
-      });
+      res.status(200).json({ reports });
     } catch (error) {
-      console.log(error);
       res.status(500).json({ message: error.message });
     }
   });

@@ -2,6 +2,7 @@ import Image from "next/image";
 import animalsImage from "../../public/GroupAnimals.png";
 import cloudsImage from "../../public/Clouds.png";
 import { Alfa_Slab_One, Alegreya } from "next/font/google";
+import { Box, Typography } from "@mui/material";
 
 const alfaSlab = Alfa_Slab_One({
   weight: "400",
@@ -15,43 +16,38 @@ const alegreya = Alegreya({
 
 export default function ScrollThree() {
   return (
-    <section className="scroll3-section">
-      <div className="scroll3-row">
-
+    <Box component="section" sx={{ backgroundColor: "#F3C057", position: "relative", overflow: "hidden", py: { xs: 10, md: 14 }, px: 2 }}>
+      <Box
+        sx={{
+          maxWidth: 1100,
+          mx: "auto",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: { xs: 4, md: 7 },
+          flexDirection: { xs: "column", md: "row" },
+        }}
+      >
         {/* LEFT: Text */}
-        <div className="scroll3-text">
-          <h1 className={`${alfaSlab.className} scroll3-heading`}>
+        <Box sx={{ flex: 1, textAlign: "center" }}>
+          <Typography className={alfaSlab.className} sx={{ color: "#000", fontSize: { xs: 28, md: 36 }, mb: 3 }}>
             free. fun. effective !
-          </h1>
-
-          <p className={`${alegreya.className} scroll3-para`}>
-            With a safe, colorful, and engaging experience, we turn screen time
-            into smart time, helping young learners enjoy learning while
-            building strong foundations.
-          </p>
-        </div>
+          </Typography>
+          <Typography className={alegreya.className} sx={{ color: "#000", fontSize: { xs: 16, md: 20 }, lineHeight: 1.8 }}>
+            With a safe, colorful, and engaging experience, we turn screen time into smart time, helping young learners enjoy learning while building strong foundations.
+          </Typography>
+        </Box>
 
         {/* RIGHT: Image */}
-        <div className="scroll3-image">
-          <Image
-            src={animalsImage}
-            alt="Group of friendly animals"
-            width={500}
-            height={500}
-            priority
-          />
-        </div>
-      </div>
+        <Box sx={{ flex: 1, display: "flex", justifyContent: "center" }}>
+          <Image src={animalsImage} alt="Group of friendly animals" width={500} height={500} priority />
+        </Box>
+      </Box>
 
-      {/* ✅ CLOUDS MUST BE OUTSIDE THE ROW */}
-      <div className="clouds">
-        <Image
-          src={cloudsImage}
-          alt="Cloud decoration"
-          fill
-          priority
-        />
-      </div>
-    </section>
+      {/* Clouds decoration */}
+      <Box sx={{ position: "absolute", bottom: -10, left: 0, width: "100%", height: 250, zIndex: 2 }}>
+        <Image src={cloudsImage} alt="Cloud decoration" fill priority style={{ objectFit: "cover" }} />
+      </Box>
+    </Box>
   );
 }

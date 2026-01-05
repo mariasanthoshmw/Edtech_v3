@@ -240,7 +240,7 @@ export default function SubjectPage() {
   }, [router]);
 
   return (
-    <AuthFrame showBack={false}>
+    <AuthFrame showBack={true}>
       {/* <Box
         sx={{
           minHeight: "100vh",
@@ -257,12 +257,7 @@ export default function SubjectPage() {
         >
           {/* Header */}
           <Box sx={{ position: "relative", mb: 2 }}>
-            <Stack direction="row" alignItems="center" spacing={1}>
-              <IconButton onClick={() => router.back()}>
-                <ArrowBackIosNewIcon fontSize="small" />
-              </IconButton>
-              {/* <Typography fontWeight={700}>Study Pilot</Typography> */}
-            </Stack>
+            {/* Back button is provided by AuthFrame header */}
 
             <Stack
               direction="row"

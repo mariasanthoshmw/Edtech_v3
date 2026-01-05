@@ -5,9 +5,10 @@ import Link from "next/link";
 import axios from "axios";
 import { Cookies } from "react-cookie";
 import { Irish_Grover } from "next/font/google";
-import styles from "../styles/Learn.module.css";
 import logo from "../../public/logo.png";
 import blackLogo from "../../public/Black logo (1).png";
+import { Box, Button, Typography, IconButton } from "@mui/material";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 
 const cookies = new Cookies();
  
@@ -209,85 +210,30 @@ export default function Learn() {
   }
 
   return (
-    <div className={styles.learnPage}>
+    <Box sx={{ minHeight: "100vh", px: { xs: 2, md: 8 }, pt: { xs: 10, md: 10 }, pb: 4 }}>
       {/* Logo and Back Button - Top Left */}
-      <div
-        style={{
-          position: "fixed",
-          top: 20,
-          left: 20,
-          zIndex: 1000,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-          gap: "8px",
-        }}
-      >
-        <div style={{ marginBottom: "4px" }}>
-          <Image src={blackLogo} alt="Study Pilot Logo" height={25} />
-        </div>
-        <button
-          onClick={() => router.back()}
-          style={{
-            background: "none",
-            border: "none",
-            fontSize: "30px",
-            cursor: "pointer",
-            color: "#000",
-            padding: "8px",
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.background = "rgba(255, 255, 255, 0.1)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.background = "none";
-          }}
-        >
-          ←
-        </button>
-      </div>
+      <Box sx={{ position: "fixed", top: 20, left: 20, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
+        <Image src={blackLogo} alt="Study Pilot Logo" height={25} />
+        <IconButton onClick={() => router.back()} aria-label="Go back" size="small" sx={{ color: "#000" }}>
+          <ArrowBackIosNewIcon fontSize="small" />
+        </IconButton>
+      </Box>
 
       {loading && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            minHeight: "50vh",
-            color: "white",
-            fontSize: "18px",
-          }}
-        >
-          Loading chapter...
-        </div>
+        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh" }}>
+          <Typography sx={{ color: "white", fontSize: 18 }}>Loading chapter...</Typography>
+        </Box>
       )}
 
       {error && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            minHeight: "50vh",
-            color: "red",
-            fontSize: "18px",
-            padding: 20,
-            textAlign: "center",
-          }}
-        >
-          <div style={{ marginBottom: 20 }}>{error}</div>
-          <div style={{ fontSize: "14px", color: "#666", marginTop: 10 }}>
-            Chapter ID used: {chapter}
-          </div>
-          <div style={{ fontSize: "12px", color: "#999", marginTop: 10 }}>
-            To verify chapters exist, check: GET http://localhost:5001/api/v1/chapters/all/get
-          </div>
-        </div>
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: "50vh", p: 2, textAlign: "center" }}>
+          <Typography sx={{ color: "error.main", fontSize: 18, mb: 2 }}>{error}</Typography>
+          <Typography sx={{ fontSize: 14, color: "#666" }}>Chapter ID used: {chapter}</Typography>
+        </Box>
       )}
 
       {!loading && !error && videoUrl && (
-        <div className={styles.videoContainer}>
+        <Box sx={{ height: { xs: "60vh", md: "calc(95vh - 115px)" }, width: "100%", display: "flex", justifyContent: "center", alignItems: "center", backgroundColor: "#000", borderRadius: 2, overflow: "hidden" }}>
           <video
             ref={videoRef}
             key={videoUrl}
@@ -351,7 +297,7 @@ export default function Learn() {
             <source src={videoUrl} type="video/ogg" />
             Your browser does not support the video tag.
           </video>
-        </div>
+        </Box>
       )}
 
       {!loading && !error && !videoUrl && chapterData && (
@@ -369,14 +315,29 @@ export default function Learn() {
         </div>
       )}
       {showNextButton && (
-        <button 
-          className={`${styles.nextBtn} ${irishGrover.className}`}
-          onClick={() => router.push('/dinoquiz')}
+        <Button
+          className={irishGrover.className}
+          variant="contained"
+          onClick={() => router.push("/dinoquiz")}
+          sx={{
+            position: "fixed",
+            bottom: 20,
+            right: 20,
+            px: 3,
+            py: 1.25,
+            borderRadius: 20,
+            backgroundColor: "#ffb703",
+            color: "#000",
+            fontWeight: 700,
+            textTransform: "none",
+            boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+            "&:hover": { backgroundColor: "#f0ab03" },
+          }}
         >
           Next
-        </button>
+        </Button>
       )}
 
-    </div>
+    </Box>
   );
 }

@@ -28,7 +28,7 @@ export default function Subscription() {
 
   useEffect(() => {
     if (!token || !parentEmail) {
-      router.push("/parentlogin");
+      router.push("/");
       return;
     }
     fetchSubscription();
@@ -41,16 +41,23 @@ export default function Subscription() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        validateStatus: (status) => status === 200 || status === 401 || status === 403,
       });
+
+      if (response.status === 401 || response.status === 403) {
+        cookies.remove("token", { path: "/" });
+        cookies.remove("parentEmail", { path: "/" });
+        router.push("/");
+        return;
+      }
+
       if (response.status === 200) {
         setSubscription(response.data);
       }
     } catch (error) {
-      console.error("Error fetching subscription:", error);
-      if (error.response && error.response.status === 401) {
-        cookies.remove("token");
-        router.push("/parentlogin");
-      }
+      cookies.remove("token", { path: "/" });
+      cookies.remove("parentEmail", { path: "/" });
+      router.push("/");
     } finally {
       setLoading(false);
     }

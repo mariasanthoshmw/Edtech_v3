@@ -61,6 +61,7 @@ require("./models/Question");
 
 // Function-based routes (existing)
 require("./Routes/authRoutes")(app);
+require("./Routes/childRoutes")(app);
 require("./Routes/chaptersRoutes")(app);
 require("./Routes/SubjectRoutes")(app);
 require("./Routes/paymentRoutes")(app);

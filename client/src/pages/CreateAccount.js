@@ -7,7 +7,7 @@ import catImage from "../../public/cats.gif";
 import { Afacad } from "next/font/google";
 import Link from "next/link";
 import { Cookies } from "react-cookie";
-import { Box } from "@mui/material";
+import { Box, Button, TextField, Typography } from "@mui/material";
 
 const afacad = Afacad({
   subsets: ["latin"],
@@ -71,8 +71,9 @@ export default function CreateAccount() {
     }
 
     // Account doesn't exist, proceed with OTP for new account creation
+    // Use parent/login route which auto-creates user if doesn't exist
     try {
-      const response = await axios.post("/api/v1/parent/register-otp", { email });
+      const response = await axios.post("/api/v1/parent/login", { email });
       
       if (response.status === 200) {
         setShowOtp(true);
@@ -99,7 +100,8 @@ export default function CreateAccount() {
     }
 
     try {
-      const response = await axios.post("/api/v1/parent/register", {
+      // Use verify/parent route which works for both login and registration
+      const response = await axios.post("/api/v1/verify/parent", {
         email,
         otp,
       });
@@ -107,6 +109,9 @@ export default function CreateAccount() {
       if (response.status === 200 || response.status === 201) {
         cookies.set("token", response.data.token);
         cookies.set("parentEmail", email, { path: "/", maxAge: 30 * 24 * 60 * 60 });
+        if (response.data.user) {
+          cookies.set("user", response.data.user, { path: "/", maxAge: 30 * 24 * 60 * 60 });
+        }
         setMessage("Account created successfully! Redirecting...");
         setMessageType("success");
         
@@ -137,19 +142,35 @@ export default function CreateAccount() {
 
   return (
     <AuthFrame>
-      {/* Left Image */}
-      <div className="image-section">
-        <Image
-          src={catImage}
-          alt="Animated illustration"
-          className="gif-image"
-          priority
-        />
-      </div>
+      <Box
+        sx={{
+          width: "100%",
+          display: "flex",
+          gap: { xs: 3, md: 6 },
+          flexDirection: { xs: "column", md: "row" },
+          alignItems: { xs: "stretch", md: "center" },
+        }}
+      >
+        {/* Left Image */}
+        <Box
+          sx={{
+            flex: 1,
+            display: { xs: "none", md: "flex" },
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Image src={catImage} alt="Animated illustration" priority style={{ width: "280px", height: "auto" }} />
+        </Box>
 
-      {/* Form */}
-      <div className="form-section">
-        <h1 className={afacad.className}>Create your Account</h1>
+        {/* Form */}
+        <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <Typography
+            className={afacad.className}
+            sx={{ fontSize: 26, fontWeight: 700, mb: 2, textAlign: "center" }}
+          >
+            Create your Account
+          </Typography>
 
         {/* Message display */}
         {message && (
@@ -173,60 +194,75 @@ export default function CreateAccount() {
         {/* Conditional rendering based on showOtp */}
         {showOtp ? (
           <>
-            <label className={afacad.className}>Enter OTP</label>
-            <input
-              type="text"
-              placeholder="Enter the OTP sent to your email"
+            <TextField
+              label="Enter OTP"
               value={otp}
               onChange={(e) => {
                 setOtp(e.target.value);
                 setMessage("");
               }}
+              fullWidth
             />
-            <button
-              className={`primary-btn ${afacad.className}`}
+            <Button
               onClick={verifyOtp}
+              variant="contained"
+              className={afacad.className}
+              sx={{
+                mt: 2,
+                backgroundColor: "#000000",
+                color: "#FFFFFF",
+                height: 52,
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 700,
+                "&:hover": { backgroundColor: "#333333" },
+              }}
             >
               Verify OTP
-            </button>
+            </Button>
           </>
         ) : (
           <>
-            <label className={afacad.className}>Email Address</label>
-            <input
-              type="text"
-              placeholder="Enter your email"
+            <TextField
+              label="Email Address"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
                 setMessage("");
                 cookies.set("parentEmail", e.target.value, { path: "/", maxAge: 30 * 24 * 60 * 60 });
               }}
+              fullWidth
             />
-            <button
-              className={`primary-btn ${afacad.className}`}
+            <Button
               onClick={sendOtp}
+              variant="contained"
+              className={afacad.className}
+              sx={{
+                mt: 2,
+                backgroundColor: "#000000",
+                color: "#FFFFFF",
+                height: 52,
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 700,
+                "&:hover": { backgroundColor: "#333333" },
+              }}
             >
               Send OTP
-            </button>
+            </Button>
           </>
         )}
 
-        <p className="signin-text" style={{ marginTop: "24px" }}>
-          Already have an account?{" "}
-          <Link href="/" passHref>
-            <span
-              style={{
-                color: "#1E88E5",
-                cursor: "pointer",
-                fontWeight: "600",
-              }}
-            >
-              Sign In
-            </span>
-          </Link>
-        </p>
-      </div>
+          <Typography sx={{ mt: 3, textAlign: "center", fontSize: 14, color: "#666" }}>
+            Already have an account?{" "}
+            <Link href="/" passHref>
+              <Box component="span" sx={{ color: "#1E88E5", cursor: "pointer", fontWeight: 700 }}>
+                Sign In
+              </Box>
+            </Link>
+          </Typography>
+        </Box>
+      </Box>
     </AuthFrame>
   );
 }

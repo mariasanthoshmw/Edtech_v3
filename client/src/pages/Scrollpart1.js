@@ -8,6 +8,7 @@ import { useRouter } from "next/router";
 import { Cookies } from "react-cookie";
 
 import { Alfa_Slab_One, Poppins, Alegreya } from "next/font/google";
+import { Box, Button, TextField, Typography } from "@mui/material";
 const alfaSlab = Alfa_Slab_One({
   weight: "400",
   subsets: ["latin"],
@@ -26,12 +27,16 @@ const cookies = new Cookies();
 
 export default function Home() {
   const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [showOtp, setShowOtp] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState(""); // "success" or "error"
   const router = useRouter();
 
   const handleGetStarted = async () => {
     if (!email) {
       setMessage("Please enter your email address");
+      setMessageType("error");
       return;
     }
 
@@ -39,6 +44,7 @@ export default function Home() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setMessage("Please enter a valid email address");
+      setMessageType("error");
       return;
     }
 
@@ -47,9 +53,19 @@ export default function Home() {
       const response = await axios.post("/api/v1/user/check", { email });
       
       if (response.status === 200 && response.data.exists) {
-        // User exists - save email and redirect directly to profiles page
-        cookies.set("parentEmail", email, { path: "/", maxAge: 30 * 24 * 60 * 60 });
-        router.push("/profiles");
+        // User exists - send OTP for login
+        try {
+          const otpResponse = await axios.post("/api/v1/parent/login", { email });
+          if (otpResponse.status === 200) {
+            setShowOtp(true);
+            setMessage("OTP sent to your email. Please check and enter it.");
+            setMessageType("success");
+            cookies.set("parentEmail", email, { path: "/", maxAge: 30 * 24 * 60 * 60 });
+          }
+        } catch (otpError) {
+          setMessage("Failed to send OTP. Please try again.");
+          setMessageType("error");
+        }
       }
     } catch (error) {
       // User doesn't exist - redirect to CreateAccount
@@ -58,91 +74,230 @@ export default function Home() {
         router.push("/CreateAccount");
       } else {
         setMessage("An error occurred. Please try again.");
+        setMessageType("error");
       }
     }
   };
 
-  return (
-    <section className="hero">
-      {/* Background image */}
-      <div className="hero-bg">
-        <Image
-          src={myImage}
-          alt="Kids learning illustration"
-          priority
-          fill
-          sizes="200vw"
-          // style={{ objectFit: "" }}
-        />
-      </div>
-      <nav className="navbar">
-      <div className="navbar-logo">
-        <Image src={logo} alt="Study Pilot Logo" height={45} />
-        <span></span>
-      </div>
+  const verifyOtp = async () => {
+    if (!otp) {
+      setMessage("Please enter the OTP.");
+      setMessageType("error");
+      return;
+    }
 
-      <Link href="/CreateAccount" passHref>
-        <button className="login-btn font-jsMath">SIGN UP</button>
-      </Link>
-    </nav>
-
-      {/* Content on top */}
-      <div className={`hero-content ${poppins.className}`}>
-
-        <h1 className={alfaSlab.className}>
-         Boost Your <br /> Child's Future
-       </h1>
-
-        <p className={alegreya.className}>
-          Unlocking potential. Your partner in 
-        </p>
-        <p className={alegreya.className}>
-          cultivating your child's
-          educational journey.
-        </p>
-
-        <div style={{ marginTop: "1.5rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          <input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setMessage("");
-            }}
-            style={{
-              padding: "12px 16px",
-              borderRadius: "8px",
-              border: "2px solid white",
-              backgroundColor: "rgba(255, 255, 255, 0.9)",
-              fontSize: "16px",
-              color: "#000",
-              width: "100%",
-              maxWidth: "400px"
-            }}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                handleGetStarted();
-              }
-            }}
-          />
-          {message && (
-            <p style={{ color: "#ffeb3b", fontSize: "14px", margin: 0 }}>
-              {message}
-            </p>
-          )}
-          <button 
-            className="getStarted-btn font-jsMath"
-            onClick={handleGetStarted}
-            style={{ marginTop: "0.5rem" }}
-          >
-            GET STARTED
-          </button>
-          
-        </div>
+    try {
+      const response = await axios.post("/api/v1/verify/parent", {
+        email,
+        otp,
+      });
+      
+      if (response.status === 200) {
+        cookies.set("token", response.data.token);
+        cookies.set("parentEmail", email, { path: "/", maxAge: 30 * 24 * 60 * 60 });
+        cookies.set("user", response.data.user, { path: "/", maxAge: 30 * 24 * 60 * 60 });
+        setMessage("Login successful! Redirecting...");
+        setMessageType("success");
         
-      </div>
-    </section>
+        // Redirect after 1.5 seconds
+        setTimeout(() => {
+          router.push("/profiles");
+        }, 1500);
+      }
+    } catch (error) {
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 400) {
+          setMessage("Invalid OTP. Please check and try again.");
+        } else if (status === 404) {
+          setMessage("User not found. Please check your email.");
+        } else {
+          setMessage("OTP verification failed. Please try again.");
+        }
+      } else {
+        setMessage("Unable to connect to server. Please check your connection.");
+      }
+      setMessageType("error");
+    }
+  };
+
+  return (
+    <Box
+      component="section"
+      sx={{
+        position: "relative",
+        width: "100%",
+        minHeight: "90vh",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        color: "#fff",
+      }}
+    >
+      {/* Background image */}
+      <Box sx={{ position: "absolute", inset: 0, zIndex: 0 }}>
+        <Image src={myImage} alt="Kids learning illustration" priority fill sizes="200vw" style={{ objectFit: "contain" }} />
+      </Box>
+
+      {/* Navbar */}
+      <Box
+        component="nav"
+        sx={{
+          position: "absolute",
+          top: 24,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: { xs: "calc(100% - 32px)", md: "calc(100% - 120px)" },
+          height: 64,
+          backgroundColor: "#0475FD",
+          borderRadius: 40,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 3.5,
+          zIndex: 2,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Image src={logo} alt="Study Pilot Logo" height={45} />
+        </Box>
+        <Link href="/CreateAccount" passHref>
+          <Button
+            variant="contained"
+            sx={{
+              backgroundColor: "#ffbf47",
+              color: "#fff",
+              borderRadius: 20,
+              px: 3,
+              py: 1,
+              fontWeight: 700,
+              textTransform: "none",
+              "&:hover": { backgroundColor: "#f1b440" },
+            }}
+          >
+            SIGN UP
+          </Button>
+        </Link>
+      </Box>
+
+      {/* Content */}
+      <Box
+        sx={{
+          position: "relative",
+          zIndex: 1,
+          width: "100%",
+          maxWidth: 520,
+          ml: { xs: 3, md: 12 },
+          mt: { xs: 10, md: 12 },
+        }}
+        className={poppins.className}
+      >
+        <Typography className={alfaSlab.className} sx={{ fontSize: { xs: 34, md: 44 }, lineHeight: 1.1, fontWeight: 700 }}>
+          Boost Your <br /> Child&apos;s Future
+        </Typography>
+
+        <Typography className={alegreya.className} sx={{ fontSize: { xs: 18, md: 22 }, mt: 2 }}>
+          Unlocking potential. Your partner in
+        </Typography>
+        <Typography className={alegreya.className} sx={{ fontSize: { xs: 18, md: 22 } }}>
+          cultivating your child&apos;s educational journey.
+        </Typography>
+
+        <Box sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 1.5, maxWidth: 400 }}>
+          {!showOtp ? (
+            <>
+              <TextField
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setMessage("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleGetStarted();
+                }}
+                fullWidth
+                sx={{
+                  backgroundColor: "rgba(255,255,255,0.9)",
+                  borderRadius: 2,
+                }}
+              />
+              {message && (
+                <Typography sx={{ color: messageType === "error" ? "#ffeb3b" : "#4caf50", fontSize: 14 }}>
+                  {message}
+                </Typography>
+              )}
+              <Button
+                onClick={handleGetStarted}
+                variant="contained"
+                sx={{
+                  backgroundColor: "#ffbf47",
+                  color: "#fff",
+                  borderRadius: 20,
+                  py: 1.5,
+                  fontWeight: 800,
+                  textTransform: "none",
+                  "&:hover": { backgroundColor: "#f1b440" },
+                }}
+              >
+                GET STARTED
+              </Button>
+            </>
+          ) : (
+            <>
+              <TextField
+                label="OTP"
+                value={otp}
+                onChange={(e) => {
+                  setOtp(e.target.value);
+                  setMessage("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") verifyOtp();
+                }}
+                fullWidth
+                sx={{
+                  backgroundColor: "rgba(255,255,255,0.9)",
+                  borderRadius: 2,
+                }}
+              />
+              {message && (
+                <Typography sx={{ color: messageType === "error" ? "#ffeb3b" : "#4caf50", fontSize: 14 }}>
+                  {message}
+                </Typography>
+              )}
+              <Button
+                onClick={verifyOtp}
+                variant="contained"
+                sx={{
+                  backgroundColor: "#ffbf47",
+                  color: "#fff",
+                  borderRadius: 20,
+                  py: 1.5,
+                  fontWeight: 800,
+                  textTransform: "none",
+                  "&:hover": { backgroundColor: "#f1b440" },
+                }}
+              >
+                VERIFY OTP
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowOtp(false);
+                  setOtp("");
+                  setMessage("");
+                }}
+                variant="text"
+                sx={{ color: "#fff", textTransform: "none", alignSelf: "flex-start" }}
+              >
+                Change Email
+              </Button>
+            </>
+          )}
+        </Box>
+      </Box>
+    </Box>
   );
 }
 

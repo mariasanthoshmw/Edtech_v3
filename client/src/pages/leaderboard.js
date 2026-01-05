@@ -42,7 +42,15 @@ export default function Leaderboard() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        validateStatus: (status) => status === 200 || status === 401 || status === 403,
       });
+
+      if (childResponse.status === 401 || childResponse.status === 403) {
+        cookies.remove("token", { path: "/" });
+        cookies.remove("parentEmail", { path: "/" });
+        router.push("/");
+        return;
+      }
       
       const child = childResponse.data.children.find(c => c.id === selectedChildId);
       if (!child) {
@@ -62,7 +70,9 @@ export default function Leaderboard() {
         setUserPosition(response.data.userPosition);
       }
     } catch (error) {
-      console.error("Error fetching leaderboard:", error);
+      cookies.remove("token", { path: "/" });
+      cookies.remove("parentEmail", { path: "/" });
+      router.push("/");
     } finally {
       setLoading(false);
     }

@@ -73,7 +73,7 @@ export default function Profiles() {
 
   useEffect(() => {
     if (!token || !parentEmail) {
-      router.push("/parentlogin");
+      router.push("/");
       return;
     }
     checkSession();
@@ -85,7 +85,17 @@ export default function Profiles() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        // Prevent AxiosError overlay on expected auth failures; handle via status checks.
+        validateStatus: (status) => status === 200 || status === 401 || status === 403,
       });
+
+      if (response.status === 401 || response.status === 403) {
+        cookies.remove("token", { path: "/" });
+        cookies.remove("parentEmail", { path: "/" });
+        router.push("/");
+        return;
+      }
+
       if (response.status === 200) {
         if (response.data.requiresOtp) {
           setRequiresOtp(true);
@@ -100,11 +110,9 @@ export default function Profiles() {
         }
       }
     } catch (error) {
-      console.error("Error checking session:", error);
-      if (error.response && error.response.status === 401) {
-        cookies.remove("token");
-        router.push("/parentlogin");
-      }
+      cookies.remove("token", { path: "/" });
+      cookies.remove("parentEmail", { path: "/" });
+      router.push("/");
     }
   };
 
@@ -136,16 +144,23 @@ export default function Profiles() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        validateStatus: (status) => status === 200 || status === 401 || status === 403,
       });
+
+      if (response.status === 401 || response.status === 403) {
+        cookies.remove("token", { path: "/" });
+        cookies.remove("parentEmail", { path: "/" });
+        router.push("/");
+        return;
+      }
+
       if (response.status === 200) {
         setProfiles(response.data.children || []);
       }
     } catch (error) {
-      console.error("Error fetching profiles:", error);
-      if (error.response && error.response.status === 401) {
-        cookies.remove("token");
-        router.push("/parentlogin");
-      }
+      cookies.remove("token", { path: "/" });
+      cookies.remove("parentEmail", { path: "/" });
+      router.push("/");
     } finally {
       setLoading(false);
     }
@@ -157,12 +172,23 @@ export default function Profiles() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        validateStatus: (status) => status === 200 || status === 401 || status === 403,
       });
+
+      if (response.status === 401 || response.status === 403) {
+        cookies.remove("token", { path: "/" });
+        cookies.remove("parentEmail", { path: "/" });
+        router.push("/");
+        return;
+      }
+
       if (response.status === 200) {
         setSubscriptionStatus(response.data.status || "trial");
       }
     } catch (error) {
-      console.error("Error fetching subscription:", error);
+      cookies.remove("token", { path: "/" });
+      cookies.remove("parentEmail", { path: "/" });
+      router.push("/");
     }
   };
 
@@ -355,7 +381,7 @@ export default function Profiles() {
   // Session OTP Modal
   if (showSessionOtp) {
     return (
-      <AuthFrame showBack={false}>
+      <AuthFrame showBack={true}>
         <Box
           sx={{
             display: "flex",
@@ -440,7 +466,7 @@ export default function Profiles() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <AuthFrame showBack={false}>
+      <AuthFrame showBack={true}>
         <Box
           sx={{
             display: "flex",

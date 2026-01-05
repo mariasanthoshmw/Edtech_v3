@@ -32,7 +32,7 @@ export default function QuizPage() {
     const chId = cookies.get("selectedChapterId");
 
     if (!token) {
-      router.replace("/parentlogin");
+      router.replace("/");
       return;
     }
 

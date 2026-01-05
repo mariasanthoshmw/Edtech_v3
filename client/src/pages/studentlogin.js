@@ -1,4 +1,4 @@
-import { Box, Container, Typography, TextField, Button } from "@mui/material";
+import { Box, Typography, TextField, Button } from "@mui/material";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Cookies } from "react-cookie";
@@ -59,6 +59,17 @@ export default function StudentLogin() {
           setMessageType("error");
           return;
         }
+
+        // Prevent mixed sessions: if a parent previously logged in on this browser,
+        // clear parent cookies so student token doesn't accidentally hit parent-only APIs.
+        cookies.remove("parentEmail", { path: "/" });
+        cookies.remove("user", { path: "/" });
+        cookies.remove("selectedChildId", { path: "/" });
+        cookies.remove("selectedChildName", { path: "/" });
+        cookies.remove("selectedChildClass", { path: "/" });
+        cookies.remove("selectedChildEmoji", { path: "/" });
+        cookies.remove("selectedSubjectId", { path: "/" });
+        cookies.remove("selectedSubjectName", { path: "/" });
 
         // Store token and student name in cookies
         cookies.set("token", response.data.token);
@@ -157,10 +168,23 @@ export default function StudentLogin() {
       </Head>
 
       <AuthFrame>
-        {/* Left section - Form */}
-        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-          <div className="form-section">
-            <h1 className={afacad.className}>Login to your Account</h1>
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            gap: { xs: 3, md: 6 },
+            flexDirection: { xs: "column", md: "row" },
+            alignItems: { xs: "stretch", md: "center" },
+          }}
+        >
+          {/* Left section - Form */}
+          <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <Typography
+              className={afacad.className}
+              sx={{ fontSize: 26, fontWeight: 700, mb: 2, textAlign: "center" }}
+            >
+              Login to your Account
+            </Typography>
 
             {/* Student/Parent toggle */}
             <Box
@@ -196,7 +220,7 @@ export default function StudentLogin() {
                   Student
                 </Button>
                 <Button
-                  onClick={() => (window.location.href = "/parentlogin")}
+                  onClick={() => (window.location.href = "/")}
                   disableRipple
                   sx={{
                     backgroundColor: "#FFFFFF", // White - unselected
@@ -235,36 +259,46 @@ export default function StudentLogin() {
               </Box>
             )}
 
-            <label className={afacad.className}>Student's Name</label>
-            <input
-              type="text"
-              placeholder="Enter your name"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setMessage(""); // Clear message when user types
-                // Save name to cookies as user types
-                cookies.set("studentName", e.target.value, { path: "/", maxAge: 30 * 24 * 60 * 60 });
-              }}
-            />
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <TextField
+                label="Student's Name"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setMessage("");
+                  cookies.set("studentName", e.target.value, { path: "/", maxAge: 30 * 24 * 60 * 60 });
+                }}
+                fullWidth
+              />
 
-            <label className={afacad.className}>Password</label>
-            <input
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setMessage(""); // Clear message when user types
-              }}
-            />
+              <TextField
+                label="Password"
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setMessage("");
+                }}
+                fullWidth
+              />
 
-            <button
-              className={`primary-btn ${afacad.className}`}
-              onClick={handleLogin}
-            >
-              Login
-            </button>
+              <Button
+                onClick={handleLogin}
+                variant="contained"
+                sx={{
+                  backgroundColor: "#000000",
+                  color: "#FFFFFF",
+                  height: 52,
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  "&:hover": { backgroundColor: "#333333" },
+                }}
+                className={afacad.className}
+              >
+                Login
+              </Button>
+            </Box>
 
             {/* Sign up link - moved inside form-section */}
             <Box sx={{ mt: 3, textAlign: "center" }}>
@@ -283,28 +317,28 @@ export default function StudentLogin() {
                 </Link>
               </Typography>
             </Box>
-          </div>
-        </Box>
+          </Box>
 
-        {/* Right section - Cat illustration */}
-        <Box
-          sx={{
-            flex: 1,
-            display: { xs: "none", md: "flex" },
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+          {/* Right section - Cat illustration */}
           <Box
-            component="img"
-            src="/cats.gif"
-            alt="Cat illustration"
             sx={{
-              width: "100%",
-              maxWidth: "400px",
-              height: "auto",
+              flex: 1,
+              display: { xs: "none", md: "flex" },
+              alignItems: "center",
+              justifyContent: "center",
             }}
-          />
+          >
+            <Box
+              component="img"
+              src="/cats.gif"
+              alt="Cat illustration"
+              sx={{
+                width: "100%",
+                maxWidth: "400px",
+                height: "auto",
+              }}
+            />
+          </Box>
         </Box>
       </AuthFrame>
     </>
