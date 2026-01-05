@@ -62,6 +62,10 @@ export default function ScoreboardPage() {
   const handleBackToChapters = () => {
     router.push("/chapters");
   };
+  
+  const handleSeeLeaderboard = () => {
+    router.push("/leaderboard");
+  };
 
   if (totalQuestions === 0) {
     return (
@@ -165,7 +169,7 @@ export default function ScoreboardPage() {
 
           <Button
             variant="contained"
-            onClick={handleBackToChapters}
+            onClick={handleSeeLeaderboard}
             sx={{
               bgcolor: "#FF8C00",
               color: "#FFFFFF",
@@ -181,7 +185,7 @@ export default function ScoreboardPage() {
               mt: 2,
             }}
           >
-            Back to Chapters
+            See Leaderboard
           </Button>
         </Box>
       </AuthFrame>

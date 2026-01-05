@@ -40,32 +40,9 @@ export default function Profiles() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
   const [subscriptionStatus, setSubscriptionStatus] = useState("trial");
-  const [requiresOtp, setRequiresOtp] = useState(false);
   const [sessionOtp, setSessionOtp] = useState("");
   const [showSessionOtp, setShowSessionOtp] = useState(false);
   const router = useRouter();
-
-  //saving current avatar for the next pages in cookies 
-  const AvatarHandling = (profile) => {
-    cookies.set("selectedChildId", profile.id, {
-      path: "/",
-      maxAge: 30 * 24 * 60 * 60,
-    });
-    cookies.set("selectedChildName", profile.name, {
-      path: "/",
-      maxAge: 30 * 24 * 60 * 60,
-    });
-    cookies.set("selectedChildClass", profile.classno, {
-      path: "/",
-      maxAge: 30 * 24 * 60 * 60,
-    });
-    cookies.set("selectedChildEmoji", profile.emoji, {
-      path: "/",
-      maxAge: 30 * 24 * 60 * 60,
-    }); 
-
-    router.push("/Subject");
-  };
 
   // Get token from cookies
   const token = cookies.get("token");
@@ -98,7 +75,6 @@ export default function Profiles() {
 
       if (response.status === 200) {
         if (response.data.requiresOtp) {
-          setRequiresOtp(true);
           setShowSessionOtp(true);
           // Send OTP for session verification
           await axios.post("/api/v1/parent/login", { email: parentEmail });
@@ -124,7 +100,6 @@ export default function Profiles() {
       });
       if (response.status === 200) {
         cookies.set("token", response.data.token);
-        setRequiresOtp(false);
         setShowSessionOtp(false);
         setSessionOtp("");
         setMessage("");
@@ -524,7 +499,7 @@ export default function Profiles() {
               Parent Access Only
             </Typography>
             <Button
-              onClick={() => router.push("/subscription")}
+              onClick={() => router.push("/payment")}
               variant="outlined"
               startIcon={<CardMembershipIcon />}
               sx={{

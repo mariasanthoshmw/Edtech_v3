@@ -30,10 +30,25 @@ export default function ScrollThree() {
       >
         {/* LEFT: Text */}
         <Box sx={{ flex: 1, textAlign: "center" }}>
-          <Typography className={alfaSlab.className} sx={{ color: "#000", fontSize: { xs: 28, md: 36 }, mb: 3 }}>
+          <Typography
+            sx={{
+              fontFamily: alfaSlab.style.fontFamily,
+              fontWeight: 400,
+              color: "#000",
+              fontSize: { xs: 28, md: 36 },
+              mb: 3,
+            }}
+          >
             free. fun. effective !
           </Typography>
-          <Typography className={alegreya.className} sx={{ color: "#000", fontSize: { xs: 16, md: 20 }, lineHeight: 1.8 }}>
+          <Typography
+            sx={{
+              fontFamily: alegreya.style.fontFamily,
+              color: "#000",
+              fontSize: { xs: 16, md: 20 },
+              lineHeight: 1.8,
+            }}
+          >
             With a safe, colorful, and engaging experience, we turn screen time into smart time, helping young learners enjoy learning while building strong foundations.
           </Typography>
         </Box>
