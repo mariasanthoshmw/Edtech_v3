@@ -323,7 +323,7 @@ export default function Learn() {
             right: 20,
             px: 3,
             py: 1.25,
-            borderRadius: 20,r
+            borderRadius: 20,
             backgroundColor: "#ffb703",
             color: "#000",
             fontWeight: 700,
