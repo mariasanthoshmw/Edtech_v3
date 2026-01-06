@@ -5,7 +5,19 @@ import { Cookies } from "react-cookie";
 import Head from "next/head";
 import AuthFrame from "../components/common/AuthFrame";
 import UserProfileMenu from "../components/common/UserProfileMenu";
-import { Box, Card, CardContent, Typography, Chip, Avatar } from "@mui/material";
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Chip,
+  Avatar,
+  Stack,
+  Skeleton,
+  Divider,
+  LinearProgress,
+  Button,
+} from "@mui/material";
 import { Poppins } from "next/font/google";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
@@ -183,7 +195,7 @@ export default function Leaderboard() {
             <UserProfileMenu />
           </Box>
 
-          <Box
+          <Card
             sx={{
               borderRadius: 3,
               overflow: "hidden",
