@@ -24,13 +24,7 @@ export default function CreateAccount() {
   const [messageType, setMessageType] = useState("");
   const router = useRouter();
 
-  // Load saved email from cookies on component mount
-  useEffect(() => {
-    const savedEmail = cookies.get("parentEmail");
-    if (savedEmail) {
-      setEmail(savedEmail);
-    }
-  }, []);
+  // No need to load email from cookies anymore
 
   const sendOtp = async () => {
     // Clear previous messages
@@ -79,7 +73,6 @@ export default function CreateAccount() {
         setShowOtp(true);
         setMessage("OTP sent successfully! Please check your email.");
         setMessageType("success");
-        cookies.set("parentEmail", email, { path: "/", maxAge: 30 * 24 * 60 * 60 });
       }
     } catch (error) {
       setMessage("Failed to send OTP. Please try again.");
@@ -107,11 +100,8 @@ export default function CreateAccount() {
       });
       
       if (response.status === 200 || response.status === 201) {
+        // Only store the token
         cookies.set("token", response.data.token);
-        cookies.set("parentEmail", email, { path: "/", maxAge: 30 * 24 * 60 * 60 });
-        if (response.data.user) {
-          cookies.set("user", response.data.user, { path: "/", maxAge: 30 * 24 * 60 * 60 });
-        }
         setMessage("Account created successfully! Redirecting...");
         setMessageType("success");
         
@@ -229,7 +219,6 @@ export default function CreateAccount() {
               onChange={(e) => {
                 setEmail(e.target.value);
                 setMessage("");
-                cookies.set("parentEmail", e.target.value, { path: "/", maxAge: 30 * 24 * 60 * 60 });
               }}
               fullWidth
             />

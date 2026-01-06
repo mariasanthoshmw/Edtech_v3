@@ -174,13 +174,14 @@ export default function SubjectPage() {
   useEffect(() => {
     const fetchSubjects = async () => {
       const token = cookies.get("token");
-      const selectedChildId = cookies.get("selectedChildId");
-      const selectedChildClass = cookies.get("selectedChildClass");
+      const selectedChild = cookies.get("selectedChild"); // Already an object
       
-      if (!token || !selectedChildId || !selectedChildClass) {
+      if (!token || !selectedChild) {
         router.push("/profiles");
         return;
       }
+
+      const { id: selectedChildId, classno: selectedChildClass } = selectedChild;
 
       try {
         setLoading(true);
@@ -335,40 +336,30 @@ export default function SubjectPage() {
                     onClick={() => {
                       // Subjects are always clickable - only first chapter is accessible
                       // Store subject info in cookies and route to chapters
-                      const selectedChildClass = cookies.get("selectedChildClass");
-                      const selectedChildId = cookies.get("selectedChildId");
+                      const selectedChild = cookies.get("selectedChild"); // Already an object
 
-                      if (!selectedChildId || !selectedChildClass) {
+                      if (!selectedChild) {
                         console.error(
-                          "Child ID or Class not found. Redirecting to profiles."
+                          "Child not found. Redirecting to profiles."
                         );
                         router.push("/profiles");
                         return;
                       }
 
-                      cookies.set("selectedSubjectName", s.title, {
-                        path: "/",
-                        maxAge: 30 * 24 * 60 * 60,
-                      });
-                      cookies.set("selectedSubjectSlug", s.slug, {
-                        path: "/",
-                        maxAge: 30 * 24 * 60 * 60,
-                      });
-                      cookies.set("selectedSubjectId", s._id, {
-                        path: "/",
-                        maxAge: 30 * 24 * 60 * 60,
-                      });
-
-                      // Ensure child class is still set
-                      cookies.set("selectedChildClass", selectedChildClass, {
+                      // Store subject data as object (react-cookie will serialize it)
+                      cookies.set("selectedSubject", {
+                        id: s._id,
+                        name: s.title,
+                        slug: s.slug
+                      }, {
                         path: "/",
                         maxAge: 30 * 24 * 60 * 60,
                       });
 
                       console.log("Redirecting to chapters with:", {
                         subject: s.title,
-                        childClass: selectedChildClass,
-                        childId: selectedChildId,
+                        childClass: selectedChild.classno,
+                        childId: selectedChild.id,
                       });
 
                       router.push("/chapters");

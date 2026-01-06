@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { Cookies } from "react-cookie";
 import Head from "next/head";
 import AuthFrame from "../components/common/AuthFrame";
+import UserProfileMenu from "../components/common/UserProfileMenu";
 import { Box, Card, CardContent, Typography, LinearProgress, Chip } from "@mui/material";
 import { Poppins } from "next/font/google";
 import AssessmentIcon from "@mui/icons-material/Assessment";
@@ -21,15 +22,14 @@ export default function AcademicReport() {
   const router = useRouter();
 
   const token = cookies.get("token");
-  const parentEmail = cookies.get("parentEmail");
 
   useEffect(() => {
-    if (!token || !parentEmail) {
+    if (!token) {
       router.push("/");
       return;
     }
     fetchAcademicReport();
-  }, [token, parentEmail]);
+  }, [token]);
 
   const fetchAcademicReport = async () => {
     try {
@@ -75,8 +75,14 @@ export default function AcademicReport() {
             padding: "20px",
             maxWidth: "1200px",
             margin: "0 auto",
+            position: "relative",
           }}
         >
+          {/* User Profile Menu - Top Right */}
+          <Box sx={{ position: "absolute", right: 20, top: 0 }}>
+            <UserProfileMenu />
+          </Box>
+
           <Box
             sx={{
               display: "flex",

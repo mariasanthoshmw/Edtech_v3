@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Avatar,
@@ -11,28 +11,38 @@ import {
 import LogoutIcon from "@mui/icons-material/Logout";
 import { Cookies } from "react-cookie";
 import { useRouter } from "next/router";
+import axios from "axios";
 
 const cookies = new Cookies();
 
 export default function UserProfileMenu() {
   const router = useRouter();
   const [anchorEl, setAnchorEl] = useState(null);
+  const [userEmail, setUserEmail] = useState("User");
   const open = Boolean(anchorEl);
 
-  // Get user from cookies - try multiple possible cookie names
-  const user = cookies.get("user");
-  const parentEmail = cookies.get("parentEmail");
-  const userEmail = user?.email || parentEmail || "User";
-  const userName = userEmail;
-  
-  // Debug: Log available cookies (remove in production)
-  if (typeof window !== 'undefined') {
-    console.log("UserProfileMenu - Available cookies:", {
-      user: user,
-      parentEmail: parentEmail,
-      userEmail: userEmail
-    });
-  }
+  // Fetch user info from /api/v1/me
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      const token = cookies.get("token");
+      if (!token) return;
+
+      try {
+        const response = await axios.get("/api/v1/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.status === 200) {
+          setUserEmail(response.data.email || "User");
+        }
+      } catch (error) {
+        console.error("Error fetching user info:", error);
+      }
+    };
+
+    fetchUserInfo();
+  }, []);
   
   // Get initials for avatar
   const getInitials = (email) => {
@@ -51,12 +61,11 @@ export default function UserProfileMenu() {
   };
 
   const handleLogout = () => {
-    // Remove cookies
+    // Remove token cookie
     cookies.remove("token", { path: "/" });
-    cookies.remove("user", { path: "/" });
     
     // Redirect to login/home page
-    router.push("/createaccount");
+    router.push("/");
     handleClose();
   };
 
@@ -84,7 +93,7 @@ export default function UserProfileMenu() {
             fontWeight: 600,
           }}
         >
-          {getInitials(userName)}
+          {getInitials(userEmail)}
         </Avatar>
       </IconButton>
 

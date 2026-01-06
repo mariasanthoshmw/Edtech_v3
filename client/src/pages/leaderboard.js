@@ -4,19 +4,8 @@ import { useRouter } from "next/router";
 import { Cookies } from "react-cookie";
 import Head from "next/head";
 import AuthFrame from "../components/common/AuthFrame";
-import {
-  Avatar,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  Divider,
-  LinearProgress,
-  Skeleton,
-  Stack,
-  Typography,
-} from "@mui/material";
+import UserProfileMenu from "../components/common/UserProfileMenu";
+import { Box, Card, CardContent, Typography, Chip, Avatar } from "@mui/material";
 import { Poppins } from "next/font/google";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
@@ -35,8 +24,11 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const selectedChildId = cookies.get("selectedChildId");
-  const selectedChildName = cookies.get("selectedChildName");
+  // Get combined child cookie (already an object)
+  const selectedChild = cookies.get("selectedChild");
+
+  const selectedChildId = selectedChild?.id;
+  const selectedChildName = selectedChild?.name;
   const token = cookies.get("token");
 
   useEffect(() => {
@@ -60,7 +52,6 @@ export default function Leaderboard() {
 
       if (childResponse.status === 401 || childResponse.status === 403) {
         cookies.remove("token", { path: "/" });
-        cookies.remove("parentEmail", { path: "/" });
         router.push("/");
         return;
       }
@@ -84,7 +75,6 @@ export default function Leaderboard() {
       }
     } catch (error) {
       cookies.remove("token", { path: "/" });
-      cookies.remove("parentEmail", { path: "/" });
       router.push("/");
     } finally {
       setLoading(false);
@@ -185,9 +175,15 @@ export default function Leaderboard() {
             padding: { xs: "10px", md: "20px" },
             maxWidth: "800px",
             margin: "0 auto",
+            position: "relative",
           }}
         >
-          <Card
+          {/* User Profile Menu - Top Right */}
+          <Box sx={{ position: "absolute", right: 20, top: 0 }}>
+            <UserProfileMenu />
+          </Box>
+
+          <Box
             sx={{
               borderRadius: 3,
               overflow: "hidden",

@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useRouter } from "next/router";
+import { Cookies } from "react-cookie";
 import Image from "next/image";
 import {
   Box,
@@ -13,9 +15,11 @@ import {
   Chip,
   Stack,
   Divider,
+  CircularProgress,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
- 
+
+const cookies = new Cookies();
 const BASE_PRICE_INR = 749;
  
 const plans = [
@@ -45,12 +49,48 @@ const plans = [
 ];
  
 export default function PricingPage() {
+  const router = useRouter();
   const [currentPlan, setCurrentPlan] = useState("Free");
-  const [selectedPlan, setSelectedPlan] = useState("Free");
+  const [selectedPlan, setSelectedPlan] = useState("Student Pro");
   const [billing, setBilling] = useState("monthly");
- 
+  const [loading, setLoading] = useState(false);
+  const [parentEmail, setParentEmail] = useState("");
+
+  const token = cookies.get("token");
+
   const discountedMonthly = Math.round(BASE_PRICE_INR * 0.8);
   const yearlyPrice = Math.round(discountedMonthly * 12 * 0.8);
+
+  useEffect(() => {
+    // Check if user is logged in
+    if (!token) {
+      router.push("/");
+      return;
+    }
+
+    // Get subscription type from cookie (set from subscription page)
+    const subscriptionType = cookies.get("subscriptionType");
+    if (subscriptionType) {
+      setBilling(subscriptionType);
+    }
+
+    // Fetch parent email
+    fetchParentEmail();
+  }, [token]);
+
+  const fetchParentEmail = async () => {
+    try {
+      const response = await axios.get("/api/v1/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setParentEmail(response.data.email || "parent@example.com");
+    } catch (error) {
+      console.error("Failed to fetch parent email:", error);
+      setParentEmail("parent@example.com");
+    }
+  };
  
   /* ---------------- Razorpay Loader ---------------- */
   const loadRazorpay = () => {
@@ -71,53 +111,108 @@ export default function PricingPage() {
       setCurrentPlan("Free");
       return;
     }
- 
+
+    if (loading) return; // Prevent double clicks
+
     const amount = billing === "yearly" ? yearlyPrice : discountedMonthly;
- 
+
     const razorpayLoaded = await loadRazorpay();
     if (!razorpayLoaded) {
-      alert("Razorpay SDK failed to load");
+      alert("Razorpay SDK failed to load. Please refresh and try again.");
       return;
     }
- 
+
     try {
+      setLoading(true);
+
+      // Get token before creating order
+      const authToken = cookies.get("token");
+      if (!authToken) {
+        alert("Authentication required. Please login again.");
+        router.push("/");
+        return;
+      }
+
       // 1️⃣ Create order on backend
       const orderRes = await axios.post("/api/create-order", { amount });
- 
+
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "YOUR_RAZORPAY_KEY_ID",
         amount: orderRes.data.amount,
         currency: "INR",
-        name: "EdTech Learning",
-        description: "Student Pro Subscription",
+        name: "Study.Pilot",
+        description: `${billing === "yearly" ? "Yearly" : "Monthly"} Subscription`,
         order_id: orderRes.data.id,
- 
-        handler: function (response) {
-          console.log("Payment success:", response);
-          setCurrentPlan("Student Pro");
- 
-          if (typeof window !== "undefined") {
-            localStorage.setItem("plan", "Student Pro");
+
+        handler: async function (response) {
+          console.log("✅ Payment success:", response);
+          console.log("📤 Activating subscription with billing type:", billing);
+          
+          try {
+            // 2️⃣ Activate subscription on backend (unlocks all subjects for all children)
+            const subscriptionRes = await axios.post(
+              "/api/v1/parent/subscription",
+              { 
+                type: billing,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpaySignature: response.razorpay_signature
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${authToken}`,
+                },
+              }
+            );
+
+            console.log("✅ Subscription activation response:", subscriptionRes.data);
+
+            if (subscriptionRes.status === 200) {
+              setCurrentPlan("Student Pro");
+              
+              // Clear subscription type cookie
+              cookies.remove("subscriptionType", { path: "/" });
+              
+              alert("🎉 Payment successful! All subjects unlocked for all your children!");
+              
+              // Redirect to profiles page
+              setTimeout(() => {
+                router.push("/profiles");
+              }, 1500);
+            }
+          } catch (error) {
+            console.error("❌ Subscription activation failed:", error);
+            console.error("❌ Error response:", error.response?.data);
+            console.error("❌ Error status:", error.response?.status);
+            alert(`Payment received but activation failed: ${error.response?.data?.message || error.message}. Please contact support.`);
+          } finally {
+            setLoading(false);
           }
- 
-          alert("Payment successful 🎉 Welcome to Student Pro!");
         },
- 
+
         prefill: {
-          name: "Student",
-          email: "student@example.com",
+          name: "Parent",
+          email: parentEmail,
         },
- 
+
         theme: {
-          color: "#0B5ED7",
+          color: "#0B91FF",
         },
+
+        modal: {
+          ondismiss: function() {
+            setLoading(false);
+            console.log("Payment cancelled by user");
+          }
+        }
       };
- 
+
       const razorpay = new window.Razorpay(options);
       razorpay.open();
     } catch (error) {
-      console.error("Payment failed", error);
-      alert("Payment failed. Please try again.");
+      console.error("❌ Payment initiation failed:", error);
+      alert("Failed to initiate payment. Please try again.");
+      setLoading(false);
     }
   };
  
@@ -251,7 +346,7 @@ export default function PricingPage() {
                   <Button
                     fullWidth
                     size="large"
-                    disabled={currentPlan === plan.title}
+                    disabled={currentPlan === plan.title || loading}
                     onClick={(e) => {
                       e.stopPropagation();
                       handlePlanSelect(plan.title);
@@ -272,9 +367,13 @@ export default function PricingPage() {
                       },
                     }}
                   >
-                    {currentPlan === plan.title
-                      ? "Current Plan ✅"
-                      : plan.cta}
+                    {loading ? (
+                      <CircularProgress size={24} sx={{ color: "#fff" }} />
+                    ) : currentPlan === plan.title ? (
+                      "Current Plan ✅"
+                    ) : (
+                      plan.cta
+                    )}
                   </Button>
                 </CardActions>
               </Card>

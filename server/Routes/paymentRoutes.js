@@ -1,8 +1,9 @@
 const mongoose = require("mongoose");
 const requireLogin = require("../middleware/requireLogin");
+const requireParent = require("../middleware/requireParent");
 const Razorpay = require("razorpay");
- 
- 
+
+const User = mongoose.model("edtechusers");
 const UserSubject = mongoose.model("usersubjects");
 const Subject = mongoose.model("subjects");
  
@@ -160,7 +161,7 @@ module.exports = (app) => {
         .populate("userId", "name email")
         .populate("subjectId", "name classnumber price")
         .sort({ purchaseDate: -1 });
- 
+
       res.status(200).json({
         message: "All purchases retrieved successfully",
         purchases,
@@ -169,6 +170,139 @@ module.exports = (app) => {
     } catch (error) {
       console.log(error);
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ========================================
+  // SUBSCRIPTION ROUTES
+  // ========================================
+
+  // GET SUBSCRIPTION STATUS
+  app.get("/api/v1/parent/subscription", requireParent, async (req, res) => {
+    try {
+      const parent = await User.findById(req.user._id);
+      if (!parent || !parent.isParent) {
+        return res.status(403).json({ message: "Parent access only" });
+      }
+
+      res.status(200).json({
+        status: parent.subscriptionStatus || 'trial',
+        type: parent.subscriptionType || null,
+        startDate: parent.subscriptionStartDate || null,
+        endDate: parent.subscriptionEndDate || null
+      });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ACTIVATE SUBSCRIPTION (AFTER PAYMENT)
+  app.post("/api/v1/parent/subscription", requireParent, async (req, res) => {
+    try {
+      const { type, razorpayPaymentId, razorpayOrderId, razorpaySignature } = req.body;
+      
+      console.log("📥 Subscription request received:");
+      console.log("   Type:", type);
+      console.log("   Payment ID:", razorpayPaymentId);
+      console.log("   Order ID:", razorpayOrderId);
+      console.log("   Parent ID:", req.user._id);
+      
+      const parent = await User.findById(req.user._id);
+
+      if (!parent || !parent.isParent) {
+        console.log("❌ Access denied: Not a parent");
+        return res.status(403).json({ message: "Parent access only" });
+      }
+
+      if (!['monthly', 'yearly'].includes(type)) {
+        console.log("❌ Invalid subscription type:", type);
+        return res.status(400).json({ message: "Invalid subscription type" });
+      }
+
+      const now = new Date();
+      const endDate = new Date();
+      
+      if (type === 'monthly') {
+        endDate.setMonth(endDate.getMonth() + 1);
+      } else {
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      }
+
+      // Update parent's subscription status
+      console.log("📝 Updating parent subscription status...");
+      await User.updateOne(
+        { _id: req.user._id },
+        {
+          $set: {
+            subscriptionStatus: 'active',
+            subscriptionType: type,
+            subscriptionStartDate: now,
+            subscriptionEndDate: endDate
+          }
+        }
+      );
+
+      console.log(`🎉 Subscription activated for parent: ${parent.email}`);
+      console.log(`📅 Type: ${type}, Valid until: ${endDate.toISOString()}`);
+
+      // Unlock all subjects for all children
+      const children = await User.find({ parentId: req.user._id, isParent: { $ne: true } });
+      console.log(`👶 Found ${children.length} children to unlock subjects for`);
+
+      let totalSubjectsUnlocked = 0;
+
+      for (const child of children) {
+        const subjects = await Subject.find({ classnumber: child.classno });
+        console.log(`📚 Processing ${subjects.length} subjects for ${child.name} (Class ${child.classno})`);
+        
+        for (const subject of subjects) {
+          try {
+            let userSubject = await UserSubject.findOne({ userId: child._id, subjectId: subject._id });
+            
+            if (!userSubject) {
+              await UserSubject.create({
+                userId: child._id,
+                subjectId: subject._id,
+                locked: false,
+                purchaseDate: now,
+                transactionId: razorpayPaymentId || `SUB_${Date.now()}`,
+                orderId: razorpayOrderId || null
+              });
+              totalSubjectsUnlocked++;
+            } else {
+              userSubject.locked = false;
+              userSubject.purchaseDate = now;
+              userSubject.transactionId = razorpayPaymentId || `SUB_${Date.now()}`;
+              userSubject.orderId = razorpayOrderId || null;
+              await userSubject.save();
+              totalSubjectsUnlocked++;
+            }
+          } catch (subjectError) {
+            console.error(`❌ Error unlocking subject ${subject.name}:`, subjectError.message);
+          }
+        }
+      }
+
+      console.log(`✅ Successfully unlocked ${totalSubjectsUnlocked} subjects for ${children.length} children`);
+
+      res.status(200).json({
+        message: "Subscription activated successfully",
+        subscription: {
+          status: 'active',
+          type,
+          startDate: now,
+          endDate
+        },
+        childrenUnlocked: children.length,
+        subjectsUnlocked: totalSubjectsUnlocked
+      });
+    } catch (error) {
+      console.error("❌ Subscription activation error:", error);
+      console.error("❌ Stack trace:", error.stack);
+      res.status(500).json({ 
+        message: error.message,
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
 };

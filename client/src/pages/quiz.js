@@ -15,7 +15,7 @@ export default function QuizPage() {
   const [question, setQuestion] = useState(null);
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [currentQ, setCurrentQ] = useState(1);
-  const [totalQuestions] = useState(8);
+  const [totalQuestions, setTotalQuestions] = useState(8); // Will be updated dynamically
   const [score, setScore] = useState(0);
   const [isQuizComplete, setIsQuizComplete] = useState(false);
   const [scoreSaved, setScoreSaved] = useState(false);
@@ -24,11 +24,11 @@ export default function QuizPage() {
   const [subject, setSubject] = useState(null);
   const [chapterId, setChapterId] = useState(null);
 
-  /*  ROUTE GUARD */
+  /* ROUTE GUARD AND FETCH TOTAL QUESTIONS */
   useEffect(() => {
     const token = cookies.get("token");
-    const cId = cookies.get("selectedChildId");
-    const sub = cookies.get("selectedSubjectSlug");
+    const selectedChild = cookies.get("selectedChild"); // Already an object
+    const selectedSubject = cookies.get("selectedSubject"); // Already an object
     const chId = cookies.get("selectedChapterId");
 
     if (!token) {
@@ -36,14 +36,17 @@ export default function QuizPage() {
       return;
     }
 
-    if (!cId || !sub || !chId) {
+    if (!selectedChild || !selectedSubject || !chId) {
       router.replace("/chapters");
       return;
     }
 
-    setChildId(cId);
-    setSubject(sub);
+    setChildId(selectedChild.id);
+    setSubject(selectedSubject.slug);
     setChapterId(chId);
+
+    // Fetch total questions count for this chapter
+    fetchTotalQuestions(chId);
   }, []);
 
   /* LOAD QUESTION */
@@ -52,6 +55,28 @@ export default function QuizPage() {
     loadQuestion();
   }, [childId, subject, chapterId]);
 
+
+  const fetchTotalQuestions = async (chId) => {
+    try {
+      const token = cookies.get("token");
+      const response = await axios.get(
+        `${API_BASE}/api/v1/quiz/questions/chapter/${chId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const questionCount = response.data.totalQuestions || 1; // At least 1 question
+      console.log(`📊 QUIZ - Total questions available: ${questionCount}`);
+      setTotalQuestions(questionCount);
+    } catch (error) {
+      console.error("❌ QUIZ - Error fetching total questions:", error);
+      // Default to 1 if there's an error
+      setTotalQuestions(1);
+    }
+  };
 
   const saveQuizScore = async (finalScore = null) => {
     if (scoreSaved) {
@@ -186,8 +211,11 @@ export default function QuizPage() {
   };
 
   const handleViewScore = () => {
-    cookies.set("quizScore", score.toString(), { path: "/", maxAge: 30 * 24 * 60 * 60 });
-    cookies.set("quizTotalQuestions", totalQuestions.toString(), { path: "/", maxAge: 30 * 24 * 60 * 60 });
+    // Store quiz data as object (react-cookie will serialize it)
+    cookies.set("quizData", {
+      score: score,
+      totalQuestions: totalQuestions
+    }, { path: "/", maxAge: 30 * 24 * 60 * 60 });
     setTimeout(() => {
       router.push("/scoreboard");
     }, 100);

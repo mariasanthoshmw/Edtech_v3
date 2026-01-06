@@ -9,6 +9,7 @@ import logo from "../../public/logo.png";
 import blackLogo from "../../public/Black logo (1).png";
 import { Box, Button, Typography, IconButton } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import UserProfileMenu from "../components/common/UserProfileMenu";
 
 const cookies = new Cookies();
  
@@ -64,9 +65,11 @@ export default function Learn() {
           return;
         }
        
-        // Get authentication token
+        // Get authentication token and child ID
         const token = cookies.get("token");
-        const selectedChildId = cookies.get("selectedChildId");
+        const selectedChild = cookies.get("selectedChild"); // Already an object
+        
+        const selectedChildId = selectedChild?.id;
         
         // Use relative URL (will be proxied by Next.js)
         // If that fails, we'll try absolute URL as fallback
@@ -107,6 +110,11 @@ export default function Learn() {
      
         if (response.data && response.data.chapter) {
           setChapterData(response.data.chapter);
+          
+          // Save chapter ID to cookie for quiz page
+          cookies.set("selectedChapterId", chapterId, { path: "/" });
+          console.log("📝 Saved chapter ID to cookie:", chapterId);
+          
           // Check if chapter is already completed
           setIsVideoCompleted(response.data.chapter.status === "completed");
           // Construct video URL from backend
@@ -159,7 +167,9 @@ export default function Learn() {
   const markVideoProgress = async (status) => {
     try {
       const token = cookies.get("token");
-      const selectedChildId = cookies.get("selectedChildId");
+      const selectedChild = cookies.get("selectedChild"); // Already an object
+      
+      const selectedChildId = selectedChild?.id;
       
       if (!chapter) return;
       
@@ -217,6 +227,11 @@ export default function Learn() {
         <IconButton onClick={() => router.back()} aria-label="Go back" size="small" sx={{ color: "#000" }}>
           <ArrowBackIosNewIcon fontSize="small" />
         </IconButton>
+      </Box>
+
+      {/* User Profile Menu - Top Right */}
+      <Box sx={{ position: "fixed", top: 20, right: 20, zIndex: 1000 }}>
+        <UserProfileMenu />
       </Box>
 
       {loading && (
