@@ -299,12 +299,21 @@ export default function Home() {
                 }}
                 fullWidth
                 sx={{
-                  backgroundColor: "rgba(255,255,255,0.9)",
                   borderRadius: 2,
+                  "& .MuiInputLabel-root": { color: "#fff" },
+                  "& .MuiInputLabel-root.Mui-focused": { color: "#fff" },
+                  "& .MuiInputBase-input": { color: "#fff" },
+                  "& .MuiOutlinedInput-root": {
+                    backgroundColor: "rgba(0,0,0,0.25)",
+                    borderRadius: 2,
+                    "& fieldset": { borderColor: "rgba(255,255,255,0.7)" },
+                    "&:hover fieldset": { borderColor: "#fff" },
+                    "&.Mui-focused fieldset": { borderColor: "#fff" },
+                  },
                 }}
               />
               {message && (
-                <Typography sx={{ color: messageType === "error" ? "#ffeb3b" : "#4caf50", fontSize: 14 }}>
+                <Typography sx={{ color: "#fff", fontSize: 14 }}>
                   {message}
                 </Typography>
               )}
@@ -338,12 +347,21 @@ export default function Home() {
                 }}
                 fullWidth
                 sx={{
-                  backgroundColor: "rgba(255,255,255,0.9)",
                   borderRadius: 2,
+                  "& .MuiInputLabel-root": { color: "#fff" },
+                  "& .MuiInputLabel-root.Mui-focused": { color: "#fff" },
+                  "& .MuiInputBase-input": { color: "#fff" },
+                  "& .MuiOutlinedInput-root": {
+                    backgroundColor: "rgba(0,0,0,0.25)",
+                    borderRadius: 2,
+                    "& fieldset": { borderColor: "rgba(255,255,255,0.7)" },
+                    "&:hover fieldset": { borderColor: "#fff" },
+                    "&.Mui-focused fieldset": { borderColor: "#fff" },
+                  },
                 }}
               />
               {message && (
-                <Typography sx={{ color: messageType === "error" ? "#ffeb3b" : "#4caf50", fontSize: 14 }}>
+                <Typography sx={{ color: "#fff", fontSize: 14 }}>
                   {message}
                 </Typography>
               )}

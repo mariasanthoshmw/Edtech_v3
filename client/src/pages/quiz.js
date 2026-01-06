@@ -6,8 +6,9 @@ import { useRouter } from "next/router";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
 const cookies = new Cookies();
-const API_BASE = "http://localhost:5001";
+const PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "";
 const ELEPHANT_IMG = "/elephant.png";
+const MAX_QUESTIONS = 8;
 
 export default function QuizPage() {
   const router = useRouter();
@@ -15,7 +16,8 @@ export default function QuizPage() {
   const [question, setQuestion] = useState(null);
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [currentQ, setCurrentQ] = useState(1);
-  const [totalQuestions, setTotalQuestions] = useState(8); // Will be updated dynamically
+  // Always cap the quiz length to 8 questions (or fewer if DB has less)
+  const [totalQuestions, setTotalQuestions] = useState(MAX_QUESTIONS);
   const [score, setScore] = useState(0);
   const [isQuizComplete, setIsQuizComplete] = useState(false);
   const [scoreSaved, setScoreSaved] = useState(false);
@@ -60,7 +62,7 @@ export default function QuizPage() {
     try {
       const token = cookies.get("token");
       const response = await axios.get(
-        `${API_BASE}/api/v1/quiz/questions/chapter/${chId}`,
+        `${PUBLIC_BASE_URL}/api/v1/quiz/questions/chapter/${chId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -70,11 +72,12 @@ export default function QuizPage() {
 
       const questionCount = response.data.totalQuestions || 1; // At least 1 question
       console.log(`📊 QUIZ - Total questions available: ${questionCount}`);
-      setTotalQuestions(questionCount);
+      // Cap to MAX_QUESTIONS so we don't run all questions in DB
+      setTotalQuestions(Math.min(MAX_QUESTIONS, Math.max(1, questionCount)));
     } catch (error) {
       console.error("❌ QUIZ - Error fetching total questions:", error);
-      // Default to 1 if there's an error
-      setTotalQuestions(1);
+      // Default to MAX_QUESTIONS if there's an error
+      setTotalQuestions(MAX_QUESTIONS);
     }
   };
 
@@ -103,7 +106,7 @@ export default function QuizPage() {
       });
 
       const response = await axios.post(
-        `${API_BASE}/api/v1/quiz/save-score`,
+        `${PUBLIC_BASE_URL}/api/v1/quiz/save-score`,
         {
           childId,
           chapterId,
@@ -129,15 +132,18 @@ export default function QuizPage() {
 
   const loadQuestion = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/api/quiz/start`, {
-        params: { childId, subject, chapterId },
-      });
-
-      if (currentQ >= totalQuestions) {
+      // Important: allow showing the last question (e.g. question 8 of 8)
+      if (currentQ > totalQuestions) {
         setIsQuizComplete(true);
         await saveQuizScore();
         return;
       }
+
+      const token = cookies.get("token");
+      const res = await axios.get(`${PUBLIC_BASE_URL}/api/quiz/start`, {
+        params: { childId, subject, chapterId },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
 
       if (!res.data.question) {
         if (currentQ < totalQuestions) {
@@ -171,11 +177,18 @@ export default function QuizPage() {
         setScore((prev) => prev + 1);
       }
 
-      const res = await axios.post(`${API_BASE}/api/quiz/answer`, {
-        childId,
-        questionId: question._id,
-        isCorrect,
-      });
+      const token = cookies.get("token");
+      const res = await axios.post(
+        `${PUBLIC_BASE_URL}/api/quiz/answer`,
+        {
+          childId,
+          questionId: question._id,
+          isCorrect,
+        },
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }
+      );
 
       const nextQ = currentQ + 1;
       

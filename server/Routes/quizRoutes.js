@@ -54,16 +54,33 @@ router.get("/start", async (req, res) => {
     let question = null;
 
     if (chapterId) {
-      let query = { isActive: true };
-      
+      // Prefer EASY questions first for the selected chapter
+      const base = {
+        isActive: true,
+        ...(subject ? { subject } : {}),
+      };
+
+      const tryChapter = async (chapterVal) => {
+        // 1) Easy first
+        question = await findQuestionExcludingAttempted({
+          ...base,
+          chapterId: chapterVal,
+          difficulty: "easy",
+        });
+        // 2) Any difficulty if no easy available
+        if (!question) {
+          question = await findQuestionExcludingAttempted({
+            ...base,
+            chapterId: chapterVal,
+          });
+        }
+      };
+
       if (mongoose.Types.ObjectId.isValid(chapterId)) {
-        query.chapterId = new mongoose.Types.ObjectId(chapterId);
-        question = await findQuestionExcludingAttempted(query);
+        await tryChapter(new mongoose.Types.ObjectId(chapterId));
       }
-      
       if (!question) {
-        query.chapterId = chapterId;
-        question = await findQuestionExcludingAttempted(query);
+        await tryChapter(chapterId); // if chapterId stored as string
       }
     }
 
@@ -204,14 +221,20 @@ router.post("/answer", async (req, res) => {
     attemptedIdStrings.add(currentIdString);
 
     // Adaptive decision
-    const adaptive = await callAdaptiveEngine({
-      child_id: childId,
-      subject: question.subject,
-      attempts: recentAttempts.map((a) => ({
+    // adaptive.py expects attempts ordered oldest -> newest
+    const attemptsForEngine = recentAttempts
+      .slice()
+      .reverse()
+      .map((a) => ({
         topic: a.topic,
         difficulty: a.difficulty,
         is_correct: a.isCorrect,
-      })),
+      }));
+
+    const adaptive = await callAdaptiveEngine({
+      child_id: childId,
+      subject: question.subject,
+      attempts: attemptsForEngine,
     });
 
     const findQuestionWithFilter = async (query, attemptedIdStrings) => {

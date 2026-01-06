@@ -18,6 +18,9 @@ const poppins = Poppins({
 const cookies = new Cookies();
 
 export default function Subscription() {
+  // Pricing display (INR)
+  const monthlyPrice = 599;
+  const yearlyPrice = monthlyPrice * 12;
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -251,7 +254,7 @@ export default function Subscription() {
                           marginBottom: 2,
                         }}
                       >
-                        $9.99
+                        ₹{monthlyPrice}
                       </Typography>
                       <Typography
                         className={poppins.className}
@@ -331,7 +334,7 @@ export default function Subscription() {
                           marginBottom: 1,
                         }}
                       >
-                        $99.99
+                        ₹{yearlyPrice}
                       </Typography>
                       <Typography
                         className={poppins.className}
@@ -352,7 +355,7 @@ export default function Subscription() {
                           fontWeight: "600",
                         }}
                       >
-                        Save $19.89 (17% off)
+                        Save ₹{monthlyPrice * 12 - yearlyPrice}
                       </Typography>
                       <Button
                         onClick={() => handleSubscribe("yearly")}

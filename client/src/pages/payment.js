@@ -20,7 +20,8 @@ import {
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 const cookies = new Cookies();
-const BASE_PRICE_INR = 749;
+// Monthly subscription price (INR)
+const BASE_PRICE_INR = 599;
  
 const plans = [
   {
@@ -58,8 +59,9 @@ export default function PricingPage() {
 
   const token = cookies.get("token");
 
-  const discountedMonthly = Math.round(BASE_PRICE_INR * 0.8);
-  const yearlyPrice = Math.round(discountedMonthly * 12 * 0.8);
+  // Keep pricing simple and clearly in INR.
+  const monthlyPrice = BASE_PRICE_INR;
+  const yearlyPrice = BASE_PRICE_INR * 12;
 
   useEffect(() => {
     // Check if user is logged in
@@ -114,7 +116,7 @@ export default function PricingPage() {
 
     if (loading) return; // Prevent double clicks
 
-    const amount = billing === "yearly" ? yearlyPrice : discountedMonthly;
+    const amount = billing === "yearly" ? yearlyPrice : monthlyPrice;
 
     const razorpayLoaded = await loadRazorpay();
     if (!razorpayLoaded) {
@@ -310,7 +312,7 @@ export default function PricingPage() {
                       {plan.title === "Student Pro"
                         ? billing === "yearly"
                           ? `₹${yearlyPrice}`
-                          : `₹${discountedMonthly}`
+                          : `₹${monthlyPrice}`
                         : plan.price}
                     </Typography>
  

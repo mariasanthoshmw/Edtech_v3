@@ -582,7 +582,7 @@ export default function Chapters() {
                       },
                     }}
                   >
-                    Subscribe to Unlock
+                    Subscribe to Unlock (₹599)
                   </Button>
                 ) : (
                   <Box

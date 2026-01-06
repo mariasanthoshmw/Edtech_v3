@@ -12,6 +12,7 @@ import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import UserProfileMenu from "../components/common/UserProfileMenu";
 
 const cookies = new Cookies();
+const PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "";
  
 const irishGrover = Irish_Grover({
   weight: "400",
@@ -71,41 +72,24 @@ export default function Learn() {
         
         const selectedChildId = selectedChild?.id;
         
-        // Use relative URL (will be proxied by Next.js)
-        // If that fails, we'll try absolute URL as fallback
-        let apiUrl = `/api/v1/chapters/${chapterId}`;
+        // Use relative URL (will be proxied by Next.js rewrites in dev/prod).
+        // If you deploy frontend+backend on different domains, set NEXT_PUBLIC_BASE_URL
+        // (e.g. https://api.yourdomain.com) to make absolute URLs.
+        let apiUrl = `${PUBLIC_BASE_URL}/api/v1/chapters/${chapterId}`;
         console.log("API URL:", apiUrl);
         console.log("Chapter ID being used:", chapterId);
         console.log("Token exists:", !!token);
         console.log("Child ID:", selectedChildId);
        
         let response;
-        try {
-          response = await axios.get(apiUrl, {
-            params: {
-              childId: selectedChildId
-            },
-            headers: token ? {
-              Authorization: `Bearer ${token}`,
-            } : {},
-          });
-        } catch (networkError) {
-          // If relative URL fails, try absolute URL
-          if (networkError.code === 'ERR_NETWORK' || networkError.message.includes('Network Error')) {
-            console.log("Relative URL failed, trying absolute URL...");
-            apiUrl = `http://localhost:5001/api/v1/chapters/${chapterId}`;
-            response = await axios.get(apiUrl, {
-              params: {
-                childId: selectedChildId
-              },
-              headers: token ? {
-                Authorization: `Bearer ${token}`,
-              } : {},
-            });
-          } else {
-            throw networkError;
-          }
-        }
+        response = await axios.get(apiUrl, {
+          params: {
+            childId: selectedChildId
+          },
+          headers: token ? {
+            Authorization: `Bearer ${token}`,
+          } : {},
+        });
         console.log("API Response:", response.data);
      
         if (response.data && response.data.chapter) {
@@ -119,14 +103,13 @@ export default function Learn() {
           setIsVideoCompleted(response.data.chapter.status === "completed");
           // Construct video URL from backend
           if (response.data.chapter.videourl) {
-            const baseUrl = "http://localhost:5001";
             let videoPath = response.data.chapter.videourl;
             
             // The videourl from DB is already in the format "videos/number-magic.mp4"
             // So we just need to prepend "/uploads/" to it
-            // Result: http://localhost:5001/uploads/videos/number-magic.mp4
+            // Result: /uploads/videos/number-magic.mp4 (or <NEXT_PUBLIC_BASE_URL>/uploads/... if set)
             
-            const fullVideoUrl = `${baseUrl}/uploads/${videoPath}`;
+            const fullVideoUrl = `${PUBLIC_BASE_URL}/uploads/${videoPath}`;
             console.log("Video path from DB:", videoPath);
             console.log("Full video URL:", fullVideoUrl);
             setVideoUrl(fullVideoUrl);
