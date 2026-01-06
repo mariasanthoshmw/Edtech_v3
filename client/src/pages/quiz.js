@@ -4,6 +4,7 @@ import { Box, Typography, Paper, LinearProgress, Button } from "@mui/material";
 import { Cookies } from "react-cookie";
 import { useRouter } from "next/router";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import AuthFrame from "../components/common/AuthFrame";
 
 const cookies = new Cookies();
 const PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "";
@@ -234,75 +235,34 @@ export default function QuizPage() {
     }, 100);
   };
 
-  if (!question && !isQuizComplete) {
-    return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          bgcolor: "#1EA0FF",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Typography variant="h6" sx={{ color: "white" }}>
-          Loading quiz…
-        </Typography>
-      </Box>
-    );
-  }
-
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "#1EA0FF",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        p: 2,
-      }}
-    >
-      {/* White Card Container */}
-      <Paper
-        elevation={0}
-        sx={{
-          width: "100%",
-          maxWidth: 900,
-          borderRadius: 4,
-          bgcolor: "#FFFFFF",
-          p: 4,
-          position: "relative",
-        }}
-      >
-        {/* Study.Pilot Branding - Top Left */}
+    <AuthFrame showBack={true} reducedPadding={true}>
+      {!question && !isQuizComplete ? (
         <Box
           sx={{
+            minHeight: "50vh",
             display: "flex",
             alignItems: "center",
-            gap: 1,
-            mb: 3,
+            justifyContent: "center",
           }}
         >
-          <Box
-            component="span"
-            sx={{
-              fontSize: "24px",
-              color: "#FF8C00",
-            }}
-          >
-            ✈️
-          </Box>
-          <Typography
-            sx={{
-              fontSize: "18px",
-              fontWeight: 600,
-              color: "#000000",
-            }}
-          >
-            Study.Pilot
+          <Typography variant="h6" sx={{ color: "#000" }}>
+            Loading quiz…
           </Typography>
         </Box>
+      ) : (
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", p: 1 }}>
+          <Paper
+            elevation={0}
+            sx={{
+              width: "100%",
+              maxWidth: 900,
+              borderRadius: 4,
+              bgcolor: "#FFFFFF",
+              p: 4,
+              position: "relative",
+            }}
+          >
 
         {/* Progress Indicator */}
         <Box sx={{ mb: 3, textAlign: "center" }}>
@@ -483,7 +443,9 @@ export default function QuizPage() {
             </Button>
           </Box>
         )}
-      </Paper>
-    </Box>
+          </Paper>
+        </Box>
+      )}
+    </AuthFrame>
   );
 }

@@ -86,6 +86,7 @@ export default function UserProfileMenu() {
             width: 48,
             height: 48,
             bgcolor: "#ff6b6b",
+            color: "#fff",
             cursor: "pointer",
             border: "3px solid white",
             boxShadow: "0 2px 8px rgba(0,0,0,0.15)",

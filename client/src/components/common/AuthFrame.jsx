@@ -1,8 +1,9 @@
 import Image from "next/image";
 import blackLogo from "../../../public/Black logo (1).png";
 import { useRouter } from "next/router";
-import { Box, IconButton, Paper } from "@mui/material";
+import { Box, IconButton, Paper, Tooltip } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 
 export default function AuthFrame({ children, showBack = true, customHeader, reducedPadding = false }) {
   const router = useRouter();
@@ -38,8 +39,29 @@ export default function AuthFrame({ children, showBack = true, customHeader, red
             customHeader
           ) : (
             <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <Image src={blackLogo} alt="Study Pilot Logo" height={25} />
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                {/* Logo */}
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <Image src={blackLogo} alt="Study Pilot Logo" height={25} />
+                </Box>
+
+                {/* Home button next to logo */}
+                <Tooltip title="Home">
+                  <IconButton
+                    aria-label="Go to landing page"
+                    onClick={() => router.push("/")}
+                    size="small"
+                    sx={{
+                      bgcolor: "#FF8C00",
+                      color: "#fff",
+                      width: 34,
+                      height: 34,
+                      "&:hover": { bgcolor: "#FF7A00" },
+                    }}
+                  >
+                    <HomeRoundedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </Box>
 
               {showBack && (

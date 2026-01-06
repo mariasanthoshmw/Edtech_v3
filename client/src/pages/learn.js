@@ -206,7 +206,7 @@ export default function Learn() {
     <Box sx={{ minHeight: "100vh", px: { xs: 2, md: 8 }, pt: { xs: 10, md: 10 }, pb: 4 }}>
       {/* Logo and Back Button - Top Left */}
       <Box sx={{ position: "fixed", top: 20, left: 20, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
-        <Image src={blackLogo} alt="Study Pilot Logo" height={25} />
+        <Image src={logo} alt="Study Pilot Logo" height={45} />
         <IconButton onClick={() => router.back()} aria-label="Go back" size="small" sx={{ color: "#000" }}>
           <ArrowBackIosNewIcon fontSize="small" />
         </IconButton>
@@ -323,7 +323,7 @@ export default function Learn() {
             right: 20,
             px: 3,
             py: 1.25,
-            borderRadius: 20,
+            borderRadius: 20,r
             backgroundColor: "#ffb703",
             color: "#000",
             fontWeight: 700,

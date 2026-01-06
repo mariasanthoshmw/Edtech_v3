@@ -372,7 +372,7 @@ export default function PricingPage() {
                     {loading ? (
                       <CircularProgress size={24} sx={{ color: "#fff" }} />
                     ) : currentPlan === plan.title ? (
-                      "Current Plan ✅"
+                      "Current Plan "
                     ) : (
                       plan.cta
                     )}

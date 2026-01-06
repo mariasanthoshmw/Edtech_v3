@@ -7,6 +7,7 @@ import { Poppins } from "next/font/google";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LockIcon from "@mui/icons-material/Lock";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import AuthFrame from "../components/common/AuthFrame";
 import UserProfileMenu from "../components/common/UserProfileMenu";
 import { useState, useEffect } from "react";
@@ -266,11 +267,27 @@ export default function Chapters() {
             }}
           >
             {/* Left: Logo and Back Button */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <Image src={blackLogo} alt="Study Pilot Logo" height={25} />
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <Image src={blackLogo} alt="Study Pilot Logo" height={25} />
+                </Box>
+                <IconButton
+                  aria-label="Home"
+                  onClick={() => router.push("/")}
+                  sx={{
+                    bgcolor: "#FF8C00",
+                    color: "#fff",
+                    width: 38,
+                    height: 38,
+                    "&:hover": { bgcolor: "#FF7A00" },
+                  }}
+                >
+                  <HomeRoundedIcon fontSize="small" />
+                </IconButton>
               </Box>
-              <IconButton onClick={() => router.back()} aria-label="Go back" size="small">
+
+              <IconButton onClick={() => router.back()} aria-label="Go back" size="small" sx={{ p: 0.5 }}>
                 <ArrowBackIosNewIcon fontSize="small" />
               </IconButton>
             </Box>

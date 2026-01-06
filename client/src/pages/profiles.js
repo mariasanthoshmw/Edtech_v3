@@ -11,6 +11,9 @@ import EditIcon from "@mui/icons-material/Edit";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CardMembershipIcon from "@mui/icons-material/CardMembership";
+import Image from "next/image";
+import blackLogo from "../../public/Black logo (1).png";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 
 const poppins = Poppins({
   weight: ["400", "500", "600", "700"],
@@ -482,7 +485,22 @@ export default function Profiles() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <AuthFrame showBack={true}>
+      <AuthFrame
+        showBack={false}
+        customHeader={
+          <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", width: "100%" }}>
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <Image src={blackLogo} alt="Study Pilot Logo" height={25} />
+              </Box>
+              <IconButton onClick={() => router.back()} aria-label="Go back" size="small" sx={{ color: "#333", p: 0.5 }}>
+                <ArrowBackIosNewIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            <UserProfileMenu />
+          </Box>
+        }
+      >
         <Box
           sx={{
             display: "flex",
@@ -504,11 +522,6 @@ export default function Profiles() {
               position: "relative",
             }}
           >
-            {/* User Profile Menu - Top Right */}
-            <Box sx={{ position: "absolute", right: 0, top: 0 }}>
-              <UserProfileMenu />
-            </Box>
-
             <Box sx={{ display: "flex", justifyContent: "center", marginBottom: 2 }}>
               {getSubscriptionBadge()}
             </Box>
